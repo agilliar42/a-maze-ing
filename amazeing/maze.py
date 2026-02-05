@@ -162,7 +162,6 @@ class Maze:
         ]:
             for a in a_iter:
                 for b in b_iter:
-                    print(f"{a}, {b}, {orientation}")
                     self.fill_wall(WallID(orientation, a, b))
 
     def walls_full(self) -> Iterable[WallID]:
