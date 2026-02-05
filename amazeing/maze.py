@@ -93,8 +93,8 @@ class Maze:
 
     def all_walls(self) -> Generator[WallID]:
         for orientation, a_count, b_count in [
-            (Orientation.HORIZONTAL, self.width + 1, self.height),
-            (Orientation.VERTICAL, self.height + 1, self.width),
+            (Orientation.HORIZONTAL, self.height + 1, self.width),
+            (Orientation.VERTICAL, self.width + 1, self.height),
         ]:
             for a in range(0, a_count):
                 for b in range(0, b_count):
@@ -162,6 +162,7 @@ class Maze:
         ]:
             for a in a_iter:
                 for b in b_iter:
+                    print(f"{a}, {b}, {orientation}")
                     self.fill_wall(WallID(orientation, a, b))
 
     def walls_full(self) -> Iterable[WallID]:
