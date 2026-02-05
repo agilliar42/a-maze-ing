@@ -56,8 +56,8 @@ class WallID:
     def pixel_coords(self) -> Iterable[PixelCoord]:
         a: Iterable[int] = [self.a * 2]
         b: Iterable[int] = [self.b * 2, self.b * 2 + 1, self.b * 2 + 2]
-        x_iter: Iterable[int] = a if self.orientation == Orientation.HORIZONTAL else b
-        y_iter: Iterable[int] = a if self.orientation == Orientation.VERTICAL else b
+        x_iter: Iterable[int] = a if self.orientation == Orientation.VERTICAL else b
+        y_iter: Iterable[int] = a if self.orientation == Orientation.HORIZONTAL else b
         return (PixelCoord(x, y) for x in x_iter for y in y_iter)
 
 

@@ -22,7 +22,7 @@ class TTYBackend(Backend):
         self.height: int = maze_height * 2 + 1
         self.style: str = style
         self.lines: list[list[str]] = [
-            [style for _ in range(0, self.height)] for _ in range(0, self.width)
+            [style for _ in range(0, self.width)] for _ in range(0, self.height)
         ]
 
     def draw_pixel(self, pos: PixelCoord) -> None:
