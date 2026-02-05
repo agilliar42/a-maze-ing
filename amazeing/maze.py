@@ -1,6 +1,5 @@
 from enum import Enum, auto
-from re import X
-from typing import Generator, Iterable, Optional, cast
+from typing import Callable, Generator, Iterable, Optional, cast
 
 from amazeing.display import PixelCoord
 
@@ -57,8 +56,12 @@ class WallCoord:
     def pixel_coords(self) -> Iterable[PixelCoord]:
         a: Iterable[int] = [self.a * 2]
         b: Iterable[int] = [self.b * 2, self.b * 2 + 1, self.b * 2 + 2]
-        x_iter: Iterable[int] = a if self.orientation == Orientation.VERTICAL else b
-        y_iter: Iterable[int] = a if self.orientation == Orientation.HORIZONTAL else b
+        x_iter: Iterable[int] = (
+            a if self.orientation == Orientation.VERTICAL else b
+        )
+        y_iter: Iterable[int] = (
+            a if self.orientation == Orientation.HORIZONTAL else b
+        )
         return (PixelCoord(x, y) for x in x_iter for y in y_iter)
 
 
@@ -82,17 +85,23 @@ class CellCoord:
 
     def walls(self) -> Iterable[WallCoord]:
         return [
-            WallCoord(Orientation.HORIZONTAL, self.__x, self.__y),
-            WallCoord(Orientation.HORIZONTAL, self.__x + 1, self.__y),
-            WallCoord(Orientation.VERTICAL, self.__y, self.__x),
-            WallCoord(Orientation.VERTICAL, self.__y + 1, self.__x),
+            WallCoord(Orientation.HORIZONTAL, self.__y, self.__x),
+            WallCoord(Orientation.HORIZONTAL, self.__y + 1, self.__x),
+            WallCoord(Orientation.VERTICAL, self.__x, self.__y),
+            WallCoord(Orientation.VERTICAL, self.__x + 1, self.__y),
         ]
 
     def pixel_coords(self) -> Iterable[PixelCoord]:
         return [PixelCoord(self.__x * 2 + 1, self.__y * 2 + 1)]
 
-    def offset(self, by: "CellCoord") -> "CellCoord":
-        return CellCoord(self.__x + by.__x, self.__y + by.__y)
+    def offset(self, by: tuple[int, int]) -> "CellCoord":
+        return CellCoord(self.__x + by[0], self.__y + by[1])
+
+    def x(self) -> int:
+        return self.__x
+
+    def y(self) -> int:
+        return self.__y
 
 
 class Pattern:
@@ -112,10 +121,38 @@ class Pattern:
             if char != " "
         }
 
-    def offset(self, offset: CellCoord) -> "Pattern":
+    def offset(self, by: tuple[int, int]) -> "Pattern":
         pattern: Pattern = Pattern([])
-        pattern.cells = {cell.offset(offset) for cell in pattern.cells}
+        pattern.cells = {cell.offset(by) for cell in self.cells}
         return pattern
+
+    def dims(self) -> tuple[int, int]:
+        dim_by: Callable[[Callable[[CellCoord], int]], int] = lambda f: (
+            max(map(lambda c: f(c) + 1, self.cells), default=0)
+            - min(map(f, self.cells), default=0)
+        )
+        return (dim_by(CellCoord.x), dim_by(CellCoord.y))
+
+    def normalized(self) -> "Pattern":
+        min_by: Callable[[Callable[[CellCoord], int]], int] = lambda f: min(
+            map(f, self.cells), default=0
+        )
+        offset: tuple[int, int] = (-min_by(CellCoord.x), -min_by(CellCoord.y))
+        return self.offset(offset)
+
+    def centered_for(self, canvas: tuple[int, int]) -> "Pattern":
+        normalized: Pattern = self.normalized()
+        dims: tuple[int, int] = normalized.dims()
+        offset: tuple[int, int] = (
+            (canvas[0] - dims[0]) // 2,
+            (canvas[1] - dims[1]) // 2,
+        )
+        return normalized.offset(offset)
+
+    def fill(self, maze: "Maze") -> None:
+        for cell in self.cells:
+            for wall in cell.walls():
+                maze.fill_wall(wall)
 
 
 class WallNetwork:
@@ -225,7 +262,9 @@ class Maze:
         return filter(lambda w: self._get_wall(w).is_full(), self.all_walls())
 
     def walls_empty(self) -> Iterable[WallCoord]:
-        return filter(lambda w: not self._get_wall(w).is_full(), self.all_walls())
+        return filter(
+            lambda w: not self._get_wall(w).is_full(), self.all_walls()
+        )
 
     def wall_bisects(self, wall: WallCoord) -> bool:
         a = {
