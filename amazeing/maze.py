@@ -64,6 +64,11 @@ class WallCoord:
         )
         return (PixelCoord(x, y) for x in x_iter for y in y_iter)
 
+    def neighbour_cells(self) -> list["CellCoord"]:
+        if self.orientation == Orientation.HORIZONTAL:
+            return [CellCoord(self.b, self.a), CellCoord(self.b, self.a - 1)]
+        return [CellCoord(self.a, self.b), CellCoord(self.a - 1, self.b)]
+
 
 class CellCoord:
     def __init__(self, x: int, y: int) -> None:
@@ -278,3 +283,16 @@ class Maze:
             if neighbour.is_full()
         }
         return len(a & b) != 0
+
+    def wall_cuts_cycle(self, wall: WallCoord) -> bool:
+        return any(
+            len(
+                [
+                    ()
+                    for wall in self.get_walls_checked(list(cell.walls()))
+                    if wall.is_full()
+                ]
+            )
+            >= 2
+            for cell in wall.neighbour_cells()
+        )
