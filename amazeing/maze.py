@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from re import X
 from typing import Generator, Iterable, Optional, cast
 
 from amazeing.display import PixelCoord
@@ -30,27 +31,27 @@ class Orientation(Enum):
         return Orientation.HORIZONTAL
 
 
-class WallID:
+class WallCoord:
     def __init__(self, orientation: Orientation, a: int, b: int) -> None:
         self.orientation: Orientation = orientation
         self.a: int = a
         self.b: int = b
 
-    def a_neighbours(self) -> list["WallID"]:
+    def a_neighbours(self) -> list["WallCoord"]:
         return [
-            WallID(self.orientation.opposite(), self.b, self.a - 1),
-            WallID(self.orientation, self.a, self.b - 1),
-            WallID(self.orientation.opposite(), self.b, self.a),
+            WallCoord(self.orientation.opposite(), self.b, self.a - 1),
+            WallCoord(self.orientation, self.a, self.b - 1),
+            WallCoord(self.orientation.opposite(), self.b, self.a),
         ]
 
-    def b_neighbours(self) -> list["WallID"]:
+    def b_neighbours(self) -> list["WallCoord"]:
         return [
-            WallID(self.orientation.opposite(), self.b + 1, self.a - 1),
-            WallID(self.orientation, self.a, self.b + 1),
-            WallID(self.orientation.opposite(), self.b + 1, self.a),
+            WallCoord(self.orientation.opposite(), self.b + 1, self.a - 1),
+            WallCoord(self.orientation, self.a, self.b + 1),
+            WallCoord(self.orientation.opposite(), self.b + 1, self.a),
         ]
 
-    def neighbours(self) -> list["WallID"]:
+    def neighbours(self) -> list["WallCoord"]:
         return self.a_neighbours() + self.b_neighbours()
 
     def pixel_coords(self) -> Iterable[PixelCoord]:
@@ -61,14 +62,70 @@ class WallID:
         return (PixelCoord(x, y) for x in x_iter for y in y_iter)
 
 
+class CellCoord:
+    def __init__(self, x: int, y: int) -> None:
+        self.__x: int = x
+        self.__y: int = y
+
+    def __members(self) -> tuple[int, int]:
+        return (self.__x, self.__y)
+
+    def __eq__(self, value: object, /) -> bool:
+        return (
+            self.__members() == cast(CellCoord, value).__members()
+            if type(self) is type(value)
+            else False
+        )
+
+    def __hash__(self) -> int:
+        return hash(self.__members())
+
+    def walls(self) -> Iterable[WallCoord]:
+        return [
+            WallCoord(Orientation.HORIZONTAL, self.__x, self.__y),
+            WallCoord(Orientation.HORIZONTAL, self.__x + 1, self.__y),
+            WallCoord(Orientation.VERTICAL, self.__y, self.__x),
+            WallCoord(Orientation.VERTICAL, self.__y + 1, self.__x),
+        ]
+
+    def pixel_coords(self) -> Iterable[PixelCoord]:
+        return [PixelCoord(self.__x * 2 + 1, self.__y * 2 + 1)]
+
+    def offset(self, by: "CellCoord") -> "CellCoord":
+        return CellCoord(self.__x + by.__x, self.__y + by.__y)
+
+
+class Pattern:
+    FT_PATTERN: list[str] = [
+        "#   ###",
+        "#     #",
+        "### ###",
+        "  # #  ",
+        "  # ###",
+    ]
+
+    def __init__(self, pat: list[str]) -> None:
+        self.cells: set[CellCoord] = {
+            CellCoord(x, y)
+            for y, line in enumerate(pat)
+            for x, char in enumerate(line)
+            if char != " "
+        }
+
+    def offset(self, offset: CellCoord) -> "Pattern":
+        pattern: Pattern = Pattern([])
+        pattern.cells = {cell.offset(offset) for cell in pattern.cells}
+        return pattern
+
+
 class WallNetwork:
     def __init__(self) -> None:
-        self.walls: set[WallID] = set()
+        self.walls: set[WallCoord] = set()
 
     def size(self) -> int:
         return len(self.walls)
 
-    def add_wall(self, id: WallID) -> None:
+    def add_wall(self, id: WallCoord) -> None:
         self.walls.add(id)
 
 
@@ -86,21 +143,21 @@ class Maze:
         ]
         self.networks: dict[NetworkID, WallNetwork] = {}
 
-    def _get_wall(self, id: WallID) -> MazeWall:
+    def _get_wall(self, id: WallCoord) -> MazeWall:
         if id.orientation == Orientation.HORIZONTAL:
             return self.horizontal[id.a][id.b]
         return self.vertical[id.a][id.b]
 
-    def all_walls(self) -> Generator[WallID]:
+    def all_walls(self) -> Generator[WallCoord]:
         for orientation, a_count, b_count in [
             (Orientation.HORIZONTAL, self.height + 1, self.width),
             (Orientation.VERTICAL, self.width + 1, self.height),
         ]:
             for a in range(0, a_count):
                 for b in range(0, b_count):
-                    yield WallID(orientation, a, b)
+                    yield WallCoord(orientation, a, b)
 
-    def _check_id(self, id: WallID) -> bool:
+    def _check_id(self, id: WallCoord) -> bool:
         if id.a < 0 or id.b < 0:
             return False
         (a_max, b_max) = (
@@ -112,20 +169,20 @@ class Maze:
             return False
         return True
 
-    def get_walls_checked(self, ids: list[WallID]) -> list[MazeWall]:
+    def get_walls_checked(self, ids: list[WallCoord]) -> list[MazeWall]:
         return [self._get_wall(id) for id in ids if self._check_id(id)]
 
-    def get_neighbours(self, id: WallID) -> list[MazeWall]:
+    def get_neighbours(self, id: WallCoord) -> list[MazeWall]:
         return self.get_walls_checked(id.neighbours())
 
-    def _fill_wall_alone(self, id: WallID, wall: MazeWall) -> None:
+    def _fill_wall_alone(self, id: WallCoord, wall: MazeWall) -> None:
         network_id: NetworkID = NetworkID()
         wall.network_id = network_id
         network = WallNetwork()
         network.add_wall(id)
         self.networks[network_id] = network
 
-    def fill_wall(self, id: WallID) -> None:
+    def fill_wall(self, id: WallCoord) -> None:
         wall: MazeWall = self._get_wall(id)
 
         if wall.is_full():
@@ -162,15 +219,15 @@ class Maze:
         ]:
             for a in a_iter:
                 for b in b_iter:
-                    self.fill_wall(WallID(orientation, a, b))
+                    self.fill_wall(WallCoord(orientation, a, b))
 
-    def walls_full(self) -> Iterable[WallID]:
+    def walls_full(self) -> Iterable[WallCoord]:
         return filter(lambda w: self._get_wall(w).is_full(), self.all_walls())
 
-    def walls_empty(self) -> Iterable[WallID]:
+    def walls_empty(self) -> Iterable[WallCoord]:
         return filter(lambda w: not self._get_wall(w).is_full(), self.all_walls())
 
-    def wall_bisects(self, wall: WallID) -> bool:
+    def wall_bisects(self, wall: WallCoord) -> bool:
         a = {
             cast(NetworkID, neighbour.network_id)
             for neighbour in self.get_walls_checked(wall.a_neighbours())
