@@ -8,7 +8,7 @@ class NetworkID:
     __uuid_gen: int = 0
 
     def __init__(self) -> None:
-        self.uuid = NetworkID.__uuid_gen
+        self.uuid: int = NetworkID.__uuid_gen
         NetworkID.__uuid_gen += 1
 
 
