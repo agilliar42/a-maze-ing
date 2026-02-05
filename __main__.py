@@ -6,7 +6,7 @@ maze.outline()
 empty = list(maze.walls_empty())
 random.shuffle(empty)
 for wall in empty:
-    if maze.wall_maintains_topology(wall):
+    if not maze.wall_bisects(wall):
         maze.fill_wall(wall)
 
 backend = TTYBackend(50, 20)

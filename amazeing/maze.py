@@ -170,7 +170,7 @@ class Maze:
     def walls_empty(self) -> Iterable[WallID]:
         return filter(lambda w: not self._get_wall(w).is_full(), self.all_walls())
 
-    def wall_maintains_topology(self, wall: WallID) -> bool:
+    def wall_bisects(self, wall: WallID) -> bool:
         a = {
             cast(NetworkID, neighbour.network_id)
             for neighbour in self.get_walls_checked(wall.a_neighbours())
@@ -181,4 +181,4 @@ class Maze:
             for neighbour in self.get_walls_checked(wall.b_neighbours())
             if neighbour.is_full()
         }
-        return len(a & b) == 0
+        return len(a & b) != 0
