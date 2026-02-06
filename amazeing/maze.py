@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from typing import Callable, Generator, Iterable, Optional, cast
+import random
 
 from amazeing.display import PixelCoord
 
@@ -36,6 +37,19 @@ class WallCoord:
         self.a: int = a
         self.b: int = b
 
+    def __members(self) -> tuple[int, int, Orientation]:
+        return (self.a, self.b, self.orientation)
+
+    def __eq__(self, value: object, /) -> bool:
+        return (
+            self.__members() == cast(WallCoord, value).__members()
+            if type(self) is type(value)
+            else False
+        )
+
+    def __hash__(self) -> int:
+        return hash(self.__members())
+
     def a_neighbours(self) -> list["WallCoord"]:
         return [
             WallCoord(self.orientation.opposite(), self.b, self.a - 1),
@@ -66,8 +80,14 @@ class WallCoord:
 
     def neighbour_cells(self) -> list["CellCoord"]:
         if self.orientation == Orientation.HORIZONTAL:
-            return [CellCoord(self.b, self.a), CellCoord(self.b, self.a - 1)]
-        return [CellCoord(self.a, self.b), CellCoord(self.a - 1, self.b)]
+            return [
+                CellCoord(self.b, self.a),
+                CellCoord(self.b, self.a - 1),
+            ]
+        return [
+            CellCoord(self.a, self.b),
+            CellCoord(self.a - 1, self.b),
+        ]
 
 
 class CellCoord:
@@ -170,49 +190,75 @@ class WallNetwork:
     def add_wall(self, id: WallCoord) -> None:
         self.walls.add(id)
 
+    def remove_wall(self, id: WallCoord) -> None:
+        self.walls.remove(id)
+
 
 class Maze:
-    def __init__(self, width: int, height: int) -> None:
-        self.width: int = width
-        self.height: int = height
+    def __init__(self, dims: tuple[int, int]) -> None:
+        self.__width: int = dims[0]
+        self.__height: int = dims[1]
+        self._clear()
+
+    def _clear(self) -> None:
         # list of lines
         self.horizontal: list[list[MazeWall]] = [
-            [MazeWall() for _ in range(0, width)] for _ in range(0, height + 1)
+            [MazeWall() for _ in range(0, self.__width)]
+            for _ in range(0, self.__height + 1)
         ]
         # list of lines
         self.vertical: list[list[MazeWall]] = [
-            [MazeWall() for _ in range(0, height)] for _ in range(0, width + 1)
+            [MazeWall() for _ in range(0, self.__height)]
+            for _ in range(0, self.__width + 1)
         ]
         self.networks: dict[NetworkID, WallNetwork] = {}
 
-    def _get_wall(self, id: WallCoord) -> MazeWall:
-        if id.orientation == Orientation.HORIZONTAL:
-            return self.horizontal[id.a][id.b]
-        return self.vertical[id.a][id.b]
+    def _rebuild(self) -> None:
+        """
+        rebuilds the maze to recompute proper connectivity values
+        """
+        walls: set[WallCoord] = {wall for wall in self.walls_full()}
+        self._clear()
+        for wall in walls:
+            self.fill_wall(wall)
+
+    def __get_wall(self, coord: WallCoord) -> MazeWall:
+        if coord.orientation == Orientation.HORIZONTAL:
+            return self.horizontal[coord.a][coord.b]
+        return self.vertical[coord.a][coord.b]
+
+    def _remove_wall(self, coord: WallCoord) -> None:
+        """
+        removes the wall, without updating network connectivity
+        """
+        wall: MazeWall = self.__get_wall(coord)
+        if wall.network_id is not None:
+            self.networks[wall.network_id].remove_wall(coord)
+            wall.network_id = None
 
     def all_walls(self) -> Generator[WallCoord]:
         for orientation, a_count, b_count in [
-            (Orientation.HORIZONTAL, self.height + 1, self.width),
-            (Orientation.VERTICAL, self.width + 1, self.height),
+            (Orientation.HORIZONTAL, self.__height + 1, self.__width),
+            (Orientation.VERTICAL, self.__width + 1, self.__height),
         ]:
             for a in range(0, a_count):
                 for b in range(0, b_count):
                     yield WallCoord(orientation, a, b)
 
-    def _check_id(self, id: WallCoord) -> bool:
-        if id.a < 0 or id.b < 0:
+    def _check_coord(self, coord: WallCoord) -> bool:
+        if coord.a < 0 or coord.b < 0:
             return False
         (a_max, b_max) = (
-            (self.height, self.width - 1)
-            if id.orientation == Orientation.HORIZONTAL
-            else (self.width, self.height - 1)
+            (self.__height, self.__width - 1)
+            if coord.orientation == Orientation.HORIZONTAL
+            else (self.__width, self.__height - 1)
         )
-        if id.a > a_max or id.b > b_max:
+        if coord.a > a_max or coord.b > b_max:
             return False
         return True
 
     def get_walls_checked(self, ids: list[WallCoord]) -> list[MazeWall]:
-        return [self._get_wall(id) for id in ids if self._check_id(id)]
+        return [self.__get_wall(id) for id in ids if self._check_coord(id)]
 
     def get_neighbours(self, id: WallCoord) -> list[MazeWall]:
         return self.get_walls_checked(id.neighbours())
@@ -225,7 +271,7 @@ class Maze:
         self.networks[network_id] = network
 
     def fill_wall(self, id: WallCoord) -> None:
-        wall: MazeWall = self._get_wall(id)
+        wall: MazeWall = self.__get_wall(id)
 
         if wall.is_full():
             return
@@ -247,28 +293,32 @@ class Maze:
 
         for to_merge in filter(lambda n: n != dest_id, networks):
             for curr in self.networks[to_merge].walls:
-                self._get_wall(curr).network_id = dest_id
+                self.__get_wall(curr).network_id = dest_id
                 dest.add_wall(curr)
 
             del self.networks[to_merge]
 
     def outline(self) -> None:
-        if self.width < 1 or self.height < 1:
+        if self.__width < 1 or self.__height < 1:
             return
         for orientation, a_iter, b_iter in [
-            (Orientation.VERTICAL, (0, self.width), range(0, self.height)),
-            (Orientation.HORIZONTAL, (0, self.height), range(0, self.width)),
+            (Orientation.VERTICAL, (0, self.__width), range(0, self.__height)),
+            (
+                Orientation.HORIZONTAL,
+                (0, self.__height),
+                range(0, self.__width),
+            ),
         ]:
             for a in a_iter:
                 for b in b_iter:
                     self.fill_wall(WallCoord(orientation, a, b))
 
     def walls_full(self) -> Iterable[WallCoord]:
-        return filter(lambda w: self._get_wall(w).is_full(), self.all_walls())
+        return filter(lambda w: self.__get_wall(w).is_full(), self.all_walls())
 
     def walls_empty(self) -> Iterable[WallCoord]:
         return filter(
-            lambda w: not self._get_wall(w).is_full(), self.all_walls()
+            lambda w: not self.__get_wall(w).is_full(), self.all_walls()
         )
 
     def wall_bisects(self, wall: WallCoord) -> bool:
@@ -286,13 +336,29 @@ class Maze:
 
     def wall_cuts_cycle(self, wall: WallCoord) -> bool:
         return any(
-            len(
-                [
-                    ()
-                    for wall in self.get_walls_checked(list(cell.walls()))
-                    if wall.is_full()
-                ]
+            (
+                len(
+                    [
+                        ()
+                        for wall in self.get_walls_checked(list(cell.walls()))
+                        if wall.is_full()
+                    ]
+                )
+                >= 3
+                if self.__get_wall(wall).is_full()
+                else 2
             )
-            >= 2
             for cell in wall.neighbour_cells()
         )
+
+    def wall_leaf_neighbours(self, coord: WallCoord) -> list[WallCoord]:
+        leaf_f: Callable[
+            [Callable[[WallCoord], list[WallCoord]]], list[WallCoord]
+        ] = lambda f: (
+            list(filter(lambda c: self._check_coord(c), f(coord)))
+            if all(
+                not wall.is_full() for wall in self.get_walls_checked(f(coord))
+            )
+            else []
+        )
+        return leaf_f(WallCoord.a_neighbours) + leaf_f(WallCoord.b_neighbours)
