@@ -1,26 +1,36 @@
+from typing import Any, Callable
 from amazeing import Maze, WallCoord
 import random
 
 
-def maze_make_pacman(maze: Maze, walls_const: set[WallCoord]) -> None:
-    iterations = 10
-    for _ in range(0, iterations):
+def maze_make_pacman(
+    maze: Maze,
+    walls_const: set[WallCoord],
+    callback: Callable[[Maze], None] = lambda _: None,
+    iterations: int = 10,
+) -> None:
+    def walls_full_apply(
+        f: Callable[[WallCoord, list[WallCoord]], Any],
+        len_pred: Callable[[int], bool],
+    ):
         walls = [wall for wall in maze.walls_full() if wall not in walls_const]
         random.shuffle(walls)
         for wall in walls:
-            if not maze.wall_cuts_cycle(wall):
-                continue
-            if maze.wall_leaf_neighbours(wall):
-                continue
-            maze._remove_wall(wall)
-        walls = [wall for wall in maze.walls_full() if wall not in walls_const]
-        random.shuffle(walls)
-        for wall in walls:
-            if not maze.wall_cuts_cycle(wall):
-                continue
             leaf_neighbours = maze.wall_leaf_neighbours(wall)
-            if len(leaf_neighbours) == 0:
-                continue
-            maze._remove_wall(wall)
-            maze.fill_wall(random.choice(leaf_neighbours))
+            if maze.wall_cuts_cycle(wall) and len_pred(len(leaf_neighbours)):
+                f(wall, leaf_neighbours)
+                callback(maze)
+
+    for _ in range(0, iterations):
+        walls_full_apply(
+            lambda wall, _: maze._remove_wall(wall),
+            lambda n: n == 0,
+        )
+        walls_full_apply(
+            lambda wall, leaf_neighbours: (
+                maze._remove_wall(wall),
+                maze.fill_wall(random.choice(leaf_neighbours)),
+            ),
+            lambda n: n != 0,
+        )
     maze._rebuild()
