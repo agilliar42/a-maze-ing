@@ -31,8 +31,8 @@ def display_maze(maze: Maze) -> None:
     sleep(0.05)
 
 
+# maze_make_perfect(maze, callback=display_maze)
 maze_make_perfect(maze)
-display_maze(maze)
-maze_make_pacman(maze, walls_const)
+maze_make_pacman(maze, walls_const, callback=display_maze)
 maze._rebuild()
 display_maze(maze)
