@@ -1,10 +1,10 @@
-from amazeing import Maze, TTYBackend, Pattern
-import random
+from amazeing import (Maze, TTYBackend, Pattern,
+                      perfect_to_imperfect, make_perfect)
 from time import sleep
 
 # random.seed(42)
 
-dims = (25, 25)
+dims = (10, 10)
 
 maze = Maze(dims)
 
@@ -26,35 +26,8 @@ def display_maze(maze: Maze) -> None:
     sleep(0.05)
 
 
-empty = list(maze.walls_empty())
-random.shuffle(empty)
-for wall in empty:
-    if maze.wall_bisects(wall):
-        continue
-    maze.fill_wall(wall)
-    # display_maze(maze)
-
-iterations = 0
-for _ in range(0, iterations):
-    walls = [wall for wall in maze.walls_full() if wall not in walls_const]
-    random.shuffle(walls)
-    for wall in walls:
-        if not maze.wall_cuts_cycle(wall):
-            continue
-        if maze.wall_leaf_neighbours(wall):
-            continue
-        maze._remove_wall(wall)
-        # display_maze(maze)
-    walls = [wall for wall in maze.walls_full() if wall not in walls_const]
-    random.shuffle(walls)
-    for wall in walls:
-        if not maze.wall_cuts_cycle(wall):
-            continue
-        leaf_neighbours = maze.wall_leaf_neighbours(wall)
-        if len(leaf_neighbours) == 0:
-            continue
-        maze._remove_wall(wall)
-        maze.fill_wall(random.choice(leaf_neighbours))
-        # display_maze(maze)
+make_perfect(maze)
+display_maze(maze)
+perfect_to_imperfect(maze, walls_const)
 maze._rebuild()
 display_maze(maze)

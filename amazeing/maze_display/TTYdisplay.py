@@ -1,20 +1,11 @@
-from abc import ABC, abstractmethod
+from .backend import Backend, PixelCoord
 import sys
 
 
-class PixelCoord:
-    def __init__(self, x: int, y: int) -> None:
-        self.x: int = x
-        self.y: int = y
-
-
-class Backend(ABC):
-    @abstractmethod
-    def draw_pixel(self, pos: PixelCoord) -> None:
-        pass
-
-
 class TTYBackend(Backend):
+    """
+    Takes the ABC Backend and displays the maze in the terminal.
+    """
     def __init__(
         self, maze_width: int, maze_height: int, style: str = " "
     ) -> None:
