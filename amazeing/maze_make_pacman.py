@@ -12,7 +12,7 @@ def maze_make_pacman(
     def walls_full_apply(
         f: Callable[[WallCoord, list[WallCoord]], Any],
         len_pred: Callable[[int], bool],
-    ):
+    ) -> None:
         walls = [wall for wall in maze.walls_full() if wall not in walls_const]
         random.shuffle(walls)
         for wall in walls:
@@ -21,16 +21,17 @@ def maze_make_pacman(
                 f(wall, leaf_neighbours)
                 callback(maze)
 
+    def wall_move(wall: WallCoord, leaf_neighbours: list[WallCoord]):
+        maze._remove_wall(wall)
+        maze.fill_wall(random.choice(leaf_neighbours))
+
     for _ in range(0, iterations):
         walls_full_apply(
             lambda wall, _: maze._remove_wall(wall),
             lambda n: n == 0,
         )
         walls_full_apply(
-            lambda wall, leaf_neighbours: (
-                maze._remove_wall(wall),
-                maze.fill_wall(random.choice(leaf_neighbours)),
-            ),
+            wall_move,
             lambda n: n != 0,
         )
     maze._rebuild()
