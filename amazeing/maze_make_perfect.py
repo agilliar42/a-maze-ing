@@ -2,7 +2,7 @@ from amazeing import Maze
 import random
 
 
-def make_perfect(maze: Maze) -> None:
+def maze_make_perfect(maze: Maze) -> None:
     empty = list(maze.walls_empty())
     random.shuffle(empty)
     for wall in empty:

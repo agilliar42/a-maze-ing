@@ -1,5 +1,10 @@
-from amazeing import (Maze, TTYBackend, Pattern,
-                      perfect_to_imperfect, make_perfect)
+from amazeing import (
+    Maze,
+    TTYBackend,
+    Pattern,
+    maze_make_pacman,
+    maze_make_perfect,
+)
 from time import sleep
 
 # random.seed(42)
@@ -26,8 +31,8 @@ def display_maze(maze: Maze) -> None:
     sleep(0.05)
 
 
-make_perfect(maze)
+maze_make_perfect(maze)
 display_maze(maze)
-perfect_to_imperfect(maze, walls_const)
+maze_make_pacman(maze, walls_const)
 maze._rebuild()
 display_maze(maze)

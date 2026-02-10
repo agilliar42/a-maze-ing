@@ -2,7 +2,7 @@ from amazeing import Maze, WallCoord
 import random
 
 
-def perfect_to_imperfect(maze: Maze, walls_const: set[WallCoord]) -> None:
+def maze_make_pacman(maze: Maze, walls_const: set[WallCoord]) -> None:
     iterations = 10
     for _ in range(0, iterations):
         walls = [wall for wall in maze.walls_full() if wall not in walls_const]
