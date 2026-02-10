@@ -21,7 +21,7 @@ def maze_make_pacman(
                 f(wall, leaf_neighbours)
                 callback(maze)
 
-    def wall_move(wall: WallCoord, leaf_neighbours: list[WallCoord]):
+    def wall_move(wall: WallCoord, leaf_neighbours: list[WallCoord]) -> None:
         maze._remove_wall(wall)
         maze.fill_wall(random.choice(leaf_neighbours))
 
