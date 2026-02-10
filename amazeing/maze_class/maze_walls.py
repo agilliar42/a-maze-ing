@@ -1,6 +1,5 @@
 from enum import Enum, auto
 from typing import Iterable, Optional, cast
-
 from ..maze_display import PixelCoord
 
 
@@ -10,6 +9,21 @@ class NetworkID:
     def __init__(self) -> None:
         self.uuid: int = NetworkID.__uuid_gen
         NetworkID.__uuid_gen += 1
+
+
+class WallNetwork:
+    def __init__(self) -> None:
+        from .maze_walls import WallCoord
+        self.walls: set[WallCoord] = set()
+
+    def size(self) -> int:
+        return len(self.walls)
+
+    def add_wall(self, id: "WallCoord") -> None:
+        self.walls.add(id)
+
+    def remove_wall(self, id: "WallCoord") -> None:
+        self.walls.remove(id)
 
 
 class MazeWall:
@@ -126,17 +140,3 @@ class CellCoord:
 
     def y(self) -> int:
         return self.__y
-
-
-class WallNetwork:
-    def __init__(self) -> None:
-        self.walls: set[WallCoord] = set()
-
-    def size(self) -> int:
-        return len(self.walls)
-
-    def add_wall(self, id: WallCoord) -> None:
-        self.walls.add(id)
-
-    def remove_wall(self, id: WallCoord) -> None:
-        self.walls.remove(id)

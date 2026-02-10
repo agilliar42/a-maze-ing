@@ -9,7 +9,7 @@ from time import sleep
 
 # random.seed(42)
 
-dims = (10, 10)
+dims = (50, 15)
 
 maze = Maze(dims)
 

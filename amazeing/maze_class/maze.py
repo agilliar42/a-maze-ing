@@ -1,6 +1,6 @@
 from typing import Callable, Generator, Iterable, cast
-from .maze_walls import (MazeWall, NetworkID,
-                         Orientation, WallCoord, WallNetwork)
+from .maze_walls import (MazeWall, NetworkID, WallNetwork,
+                         Orientation, WallCoord)
 
 
 class Maze:
