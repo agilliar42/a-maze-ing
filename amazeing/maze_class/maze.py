@@ -1,6 +1,11 @@
 from typing import Callable, Generator, Iterable, cast
-from .maze_walls import (MazeWall, NetworkID, WallNetwork,
-                         Orientation, WallCoord)
+from .maze_walls import (
+    MazeWall,
+    NetworkID,
+    Orientation,
+    WallCoord,
+    WallNetwork,
+)
 
 
 class Maze:
@@ -26,7 +31,7 @@ class Maze:
         """
         rebuilds the maze to recompute proper connectivity values
         """
-        walls: set[WallCoord] = {wall for wall in self.walls_full()}
+        walls = {wall for wall in self.walls_full()}
         self._clear()
         for wall in walls:
             self.fill_wall(wall)
@@ -40,7 +45,7 @@ class Maze:
         """
         removes the wall, without updating network connectivity
         """
-        wall: MazeWall = self.__get_wall(coord)
+        wall = self.__get_wall(coord)
         if wall.network_id is not None:
             self.networks[wall.network_id].remove_wall(coord)
             wall.network_id = None
@@ -73,14 +78,14 @@ class Maze:
         return self.get_walls_checked(id.neighbours())
 
     def _fill_wall_alone(self, id: WallCoord, wall: MazeWall) -> None:
-        network_id: NetworkID = NetworkID()
+        network_id = NetworkID()
         wall.network_id = network_id
         network = WallNetwork()
         network.add_wall(id)
         self.networks[network_id] = network
 
     def fill_wall(self, id: WallCoord) -> None:
-        wall: MazeWall = self.__get_wall(id)
+        wall = self.__get_wall(id)
 
         if wall.is_full():
             return
@@ -153,9 +158,7 @@ class Maze:
                         if wall.is_full()
                     ]
                 )
-                >= 3
-                if self.__get_wall(wall).is_full()
-                else 2
+                >= (3 if self.__get_wall(wall).is_full() else 2)
             )
             for cell in wall.neighbour_cells()
         )
