@@ -14,6 +14,7 @@ class NetworkID:
 class WallNetwork:
     def __init__(self) -> None:
         from .maze_walls import WallCoord
+
         self.walls: set[WallCoord] = set()
 
     def size(self) -> int:
@@ -42,6 +43,38 @@ class Orientation(Enum):
         if self == Orientation.HORIZONTAL:
             return Orientation.VERTICAL
         return Orientation.HORIZONTAL
+
+
+class Cardinal(Enum):
+    NORTH = auto()
+    SOUTH = auto()
+    EAST = auto()
+    WEST = auto()
+
+    def opposite(self) -> "Cardinal":
+        match self:
+            case Cardinal.NORTH:
+                return Cardinal.SOUTH
+            case Cardinal.SOUTH:
+                return Cardinal.NORTH
+            case Cardinal.EAST:
+                return Cardinal.WEST
+            case Cardinal.WEST:
+                return Cardinal.EAST
+
+    def left(self) -> "Cardinal":
+        match self:
+            case Cardinal.NORTH:
+                return Cardinal.WEST
+            case Cardinal.SOUTH:
+                return Cardinal.EAST
+            case Cardinal.EAST:
+                return Cardinal.NORTH
+            case Cardinal.WEST:
+                return Cardinal.SOUTH
+
+    def right(self) -> "Cardinal":
+        return self.left().opposite()
 
 
 class WallCoord:
@@ -122,12 +155,23 @@ class CellCoord:
         return hash(self.__members())
 
     def walls(self) -> Iterable[WallCoord]:
-        return [
-            WallCoord(Orientation.HORIZONTAL, self.__y, self.__x),
-            WallCoord(Orientation.HORIZONTAL, self.__y + 1, self.__x),
-            WallCoord(Orientation.VERTICAL, self.__x, self.__y),
-            WallCoord(Orientation.VERTICAL, self.__x + 1, self.__y),
-        ]
+        return map(
+            self.get_wall,
+            [Cardinal.NORTH, Cardinal.SOUTH, Cardinal.EAST, Cardinal.WEST],
+        )
+
+    def get_wall(self, cardinal: Cardinal) -> WallCoord:
+        match cardinal:
+            case Cardinal.NORTH:
+                return WallCoord(Orientation.HORIZONTAL, self.__y, self.__x)
+            case Cardinal.SOUTH:
+                return WallCoord(
+                    Orientation.HORIZONTAL, self.__y + 1, self.__x
+                )
+            case Cardinal.EAST:
+                return WallCoord(Orientation.VERTICAL, self.__x, self.__y)
+            case Cardinal.WEST:
+                return WallCoord(Orientation.VERTICAL, self.__x + 1, self.__y)
 
     def pixel_coords(self) -> Iterable[PixelCoord]:
         return [PixelCoord(self.__x * 2 + 1, self.__y * 2 + 1)]
