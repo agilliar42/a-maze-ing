@@ -36,7 +36,7 @@ class Maze:
         for wall in walls:
             self.fill_wall(wall)
 
-    def __get_wall(self, coord: WallCoord) -> MazeWall:
+    def get_wall(self, coord: WallCoord) -> MazeWall:
         if coord.orientation == Orientation.HORIZONTAL:
             return self.horizontal[coord.a][coord.b]
         return self.vertical[coord.a][coord.b]
@@ -45,7 +45,7 @@ class Maze:
         """
         removes the wall, without updating network connectivity
         """
-        wall = self.__get_wall(coord)
+        wall = self.get_wall(coord)
         if wall.network_id is not None:
             self.networks[wall.network_id].remove_wall(coord)
             wall.network_id = None
@@ -72,7 +72,7 @@ class Maze:
         return True
 
     def get_walls_checked(self, ids: list[WallCoord]) -> list[MazeWall]:
-        return [self.__get_wall(id) for id in ids if self._check_coord(id)]
+        return [self.get_wall(id) for id in ids if self._check_coord(id)]
 
     def get_neighbours(self, id: WallCoord) -> list[MazeWall]:
         return self.get_walls_checked(id.neighbours())
@@ -85,7 +85,7 @@ class Maze:
         self.networks[network_id] = network
 
     def fill_wall(self, id: WallCoord) -> None:
-        wall = self.__get_wall(id)
+        wall = self.get_wall(id)
 
         if wall.is_full():
             return
@@ -107,7 +107,7 @@ class Maze:
 
         for to_merge in filter(lambda n: n != dest_id, networks):
             for curr in self.networks[to_merge].walls:
-                self.__get_wall(curr).network_id = dest_id
+                self.get_wall(curr).network_id = dest_id
                 dest.add_wall(curr)
 
             del self.networks[to_merge]
@@ -128,11 +128,11 @@ class Maze:
                     self.fill_wall(WallCoord(orientation, a, b))
 
     def walls_full(self) -> Iterable[WallCoord]:
-        return filter(lambda w: self.__get_wall(w).is_full(), self.all_walls())
+        return filter(lambda w: self.get_wall(w).is_full(), self.all_walls())
 
     def walls_empty(self) -> Iterable[WallCoord]:
         return filter(
-            lambda w: not self.__get_wall(w).is_full(), self.all_walls()
+            lambda w: not self.get_wall(w).is_full(), self.all_walls()
         )
 
     def wall_bisects(self, wall: WallCoord) -> bool:
@@ -158,7 +158,7 @@ class Maze:
                         if wall.is_full()
                     ]
                 )
-                >= (3 if self.__get_wall(wall).is_full() else 2)
+                >= (3 if self.get_wall(wall).is_full() else 2)
             )
             for cell in wall.neighbour_cells()
         )

@@ -13,6 +13,7 @@ class Backend(ABC):
     defining how the maze should be drawn.
     (PixelCoord)
     """
+
     @abstractmethod
     def draw_pixel(self, pos: PixelCoord) -> None:
         pass

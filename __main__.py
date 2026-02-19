@@ -6,10 +6,16 @@ from amazeing import (
     maze_make_perfect,
 )
 from time import sleep
+from sys import stdin
+
+from amazeing.config.config_parser import Config
+from amazeing.maze_class.maze_walls import Cardinal, CellCoord
 
 # random.seed(42)
 
-dims = (50, 15)
+# print(Config.parse(stdin.read()).__dict__)
+
+dims = (25, 25)
 
 maze = Maze(dims)
 
@@ -31,8 +37,9 @@ def display_maze(maze: Maze) -> None:
     sleep(0.05)
 
 
-# maze_make_perfect(maze, callback=display_maze)
-maze_make_perfect(maze)
-maze_make_pacman(maze, walls_const, callback=display_maze)
-maze._rebuild()
-display_maze(maze)
+maze_make_perfect(maze, callback=display_maze)
+# maze_make_pacman(maze, walls_const, callback=display_maze)
+while False:
+    maze_make_perfect(maze, callback=display_maze)
+    maze_make_pacman(maze, walls_const, callback=display_maze)
+    maze._rebuild()

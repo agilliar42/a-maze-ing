@@ -6,6 +6,7 @@ class TTYBackend(Backend):
     """
     Takes the ABC Backend and displays the maze in the terminal.
     """
+
     def __init__(
         self, maze_width: int, maze_height: int, style: str = " "
     ) -> None:
