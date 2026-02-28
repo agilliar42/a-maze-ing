@@ -15,7 +15,6 @@ from .parser_combinator import (
     one_of,
     pair,
     parser_complete,
-    parser_default,
     parser_map,
     preceeded,
     recognize,

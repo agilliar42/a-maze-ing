@@ -1,6 +1,7 @@
 from enum import Enum, auto
+from sys import stderr
 from typing import Iterable, Optional, cast
-from ..maze_display import PixelCoord
+from ..maze_display import IVec2
 
 
 class NetworkID:
@@ -113,7 +114,7 @@ class WallCoord:
     def neighbours(self) -> list["WallCoord"]:
         return self.a_neighbours() + self.b_neighbours()
 
-    def pixel_coords(self) -> Iterable[PixelCoord]:
+    def tile_coords(self) -> Iterable[IVec2]:
         a: Iterable[int] = [self.a * 2]
         b: Iterable[int] = [self.b * 2, self.b * 2 + 1, self.b * 2 + 2]
         x_iter: Iterable[int] = (
@@ -122,7 +123,7 @@ class WallCoord:
         y_iter: Iterable[int] = (
             a if self.orientation == Orientation.HORIZONTAL else b
         )
-        return (PixelCoord(x, y) for x in x_iter for y in y_iter)
+        return (IVec2(x, y) for x in x_iter for y in y_iter)
 
     def neighbour_cells(self) -> list["CellCoord"]:
         if self.orientation == Orientation.HORIZONTAL:
@@ -173,8 +174,8 @@ class CellCoord:
             case Cardinal.WEST:
                 return WallCoord(Orientation.VERTICAL, self.__x + 1, self.__y)
 
-    def pixel_coords(self) -> Iterable[PixelCoord]:
-        return [PixelCoord(self.__x * 2 + 1, self.__y * 2 + 1)]
+    def pixel_coords(self) -> Iterable[IVec2]:
+        return [IVec2(self.__x * 2 + 1, self.__y * 2 + 1)]
 
     def offset(self, by: tuple[int, int]) -> "CellCoord":
         return CellCoord(self.__x + by[0], self.__y + by[1])
