@@ -1,5 +1,4 @@
 from enum import Enum, auto
-from sys import stderr
 from typing import Iterable, Optional, cast
 from ..maze_display import IVec2
 

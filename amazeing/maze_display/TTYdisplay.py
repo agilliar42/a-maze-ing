@@ -1,4 +1,13 @@
-from sys import stderr
+from amazeing.maze_display.layout import (
+    BInt,
+    Box,
+    FBox,
+    HBox,
+    VBox,
+    layout_fair,
+    vpad_box,
+    hpad_box,
+)
 from .backend import Backend, IVec2, BackendEvent, KeyboardInput
 import curses
 
@@ -10,8 +19,12 @@ class TTYTile:
     def blit(
         self, src: IVec2, dst: IVec2, size: IVec2, window: curses.window
     ) -> None:
-        for y, line in enumerate(self.__pixels[src.y : src.y + size.y]):
-            for x, (char, attrs) in enumerate(line[src.x : src.x + size.x]):
+        for y, line in enumerate(
+            self.__pixels[src.y : src.y + size.y]  # noqa E203
+        ):
+            for x, (char, attrs) in enumerate(
+                line[src.x : src.x + size.x]  # noqa E203
+            ):
                 window.addch(dst.y + y, dst.x + x, char, attrs)
 
 
@@ -44,6 +57,10 @@ class TTYTileMap:
         )
 
 
+class ScrollablePad:
+    pass
+
+
 class TTYBackend(Backend[int]):
     """
     Takes the ABC Backend and displays the maze in the terminal.
@@ -56,18 +73,35 @@ class TTYBackend(Backend[int]):
         self.__tilemap: TTYTileMap = TTYTileMap(wall_dim, cell_dim)
         self.__style = 0
 
-        dims = self.__tilemap.dst_coord(maze_dims * 2 + 2)
+        dims = self.__tilemap.dst_coord(maze_dims * 2 + 1)
 
         self.__screen: curses.window = curses.initscr()
         curses.start_color()
         curses.noecho()
         curses.cbreak()
+        curses.curs_set(0)
         self.__screen.keypad(True)
 
-        self.__pad: curses.window = curses.newpad(dims.y, dims.x)
+        self.__pad: curses.window = curses.newpad(dims.y + 1, dims.x + 1)
         self.__dims = maze_dims
 
+        maze_box = FBox(
+            IVec2(BInt(dims.x), BInt(dims.y)),
+            lambda at, into: self.__pad.refresh(
+                0, 0, at.y, at.x, at.y + into.y - 1, at.x + into.x - 1
+            ),
+        )
+        self.__layout: Box = VBox.noassoc(
+            layout_fair,
+            [
+                vpad_box(),
+                HBox.noassoc(layout_fair, [hpad_box(), maze_box, hpad_box()]),
+                vpad_box(),
+            ],
+        )
+
     def __del__(self):
+        curses.curs_set(1)
         curses.nocbreak()
         self.__screen.keypad(False)
         curses.echo()
@@ -87,18 +121,16 @@ class TTYBackend(Backend[int]):
 
     def present(self) -> None:
         self.__screen.refresh()
-        self.__pad.refresh(
-            0,
-            0,
-            0,
-            0,
-            min(self.__pad.getmaxyx()[0] - 1, self.__screen.getmaxyx()[0] - 1),
-            min(self.__pad.getmaxyx()[1] - 1, self.__screen.getmaxyx()[1] - 1),
-        )
+        y, x = self.__screen.getmaxyx()
+        self.__layout.laid_out(IVec2(0, 0), IVec2(x, y))
 
     def event(self, timeout_ms: int = -1) -> BackendEvent | None:
         self.__screen.timeout(timeout_ms)
         try:
-            return KeyboardInput(self.__screen.getkey())
+            key = self.__screen.getkey()
+            if key == "KEY_RESIZE":
+                self.__screen.erase()
+                return None
+            return KeyboardInput(key)
         except curses.error:
             return None

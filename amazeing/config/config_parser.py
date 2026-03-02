@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable
-from typing import Any, Type, cast
-from dataclasses import dataclass
+from collections.abc import Callable
+from typing import Any, Type
 from .parser_combinator import (
     ParseResult,
     Parser,
@@ -68,6 +67,7 @@ class ConfigField[T](ABC):
 
     @abstractmethod
     def parse(self, s: str) -> ParseResult[T]: ...
+
     def default(self) -> T:
         if self.__default is None:
             raise ConfigException(
@@ -91,19 +91,23 @@ class ConfigField[T](ABC):
 
 
 class IntField(ConfigField[int]):
-    parse = lambda self, s: parse_int(s)
+    def parse(self, s: str) -> ParseResult[int]:
+        return parse_int(s)
 
 
 class BoolField(ConfigField[bool]):
-    parse = lambda self, s: parse_bool(s)
+    def parse(self, s: str) -> ParseResult[bool]:
+        return parse_bool(s)
 
 
 class CoordField(ConfigField[tuple[int, int]]):
-    parse = lambda self, s: parse_coord(s)
+    def parse(self, s: str) -> ParseResult[tuple[int, int]]:
+        return parse_coord(s)
 
 
 class PathField(ConfigField[str]):
-    parse = lambda self, s: parse_path(s)
+    def parse(self, s: str) -> ParseResult[str]:
+        return parse_path(s)
 
 
 def OptionalField[T](cls: Type[ConfigField[T]]) -> Type[ConfigField[T | None]]:
@@ -129,19 +133,17 @@ def DefaultedField[T](
     return Inner
 
 
-def line_parser(
-    fields: dict[str, ConfigField[Any]],
-) -> Parser[tuple[str, Any] | None]:
+def line_parser[T](
+    fields: dict[str, ConfigField[T]],
+) -> Parser[tuple[str, T] | None]:
     return alt(
         parser_map(lambda _: None, parse_comment),
         *(
             preceeded(
                 seq(tag(name), parse_space, tag("="), parse_space),
-                # name=name is used to actually capture the value, because
-                # lambdas are by-reference otherwise, including for trivial
-                # value types, much smart very clever :)
                 parser_map(
-                    lambda res, name=name: (name, res), cut(field.parse)
+                    (lambda name: lambda res: (name, res))(name),
+                    cut(field.parse),
                 ),
             )
             for name, field in fields.items()
@@ -150,7 +152,7 @@ def line_parser(
 
 
 def fields_parser(
-    fields_raw: dict[str, type[ConfigField[Any]]],
+    fields_raw: dict[str, type[ConfigField]],
 ) -> Parser[dict[str, Any]]:
     fields = {key: cls(key) for key, cls in fields_raw.items()}
     parse_line = terminated(line_parser(fields), cut(tag("\n")))
@@ -163,11 +165,14 @@ def fields_parser(
                 acc[elem[0]].append(elem[1])
             return acc
 
-        return parser_map(
+        fields_map: Callable[[dict[str, list[Any]]], dict[str, Any]] = (
             lambda res: {
                 name: fields[name].merge(values)
                 for name, values in res.items()
-            },
+            }
+        )
+        return parser_map(
+            fields_map,
             fold(
                 parse_line,
                 fold_fn,
@@ -186,6 +191,9 @@ class Config:
     output_file: str | None
     perfect: bool
     seed: int | None
+    screensaver: bool
+    visual: bool
+    interactive: bool
 
     def __init__(self) -> None:
         pass
@@ -199,16 +207,22 @@ class Config:
                     "HEIGHT": IntField,
                     "ENTRY": OptionalField(CoordField),
                     "EXIT": OptionalField(CoordField),
-                    "OUTPUT_FILE": PathField,
-                    "PERFECT": BoolField,
+                    "OUTPUT_FILE": OptionalField(PathField),
+                    "PERFECT": DefaultedField(BoolField, True),
                     "SEED": OptionalField(IntField),
+                    "SCREENSAVER": DefaultedField(BoolField, False),
+                    "VISUAL": DefaultedField(BoolField, False),
+                    "INTERACTIVE": DefaultedField(BoolField, False),
                 }
             )
         )(s)
         if fields is None:
             raise ConfigException("Failed to parse config")
         res = Config()
-        for key, value in fields[0].items():
-            res.__dict__[key.lower()] = value
+        for key, val in fields[0].items():
+            res.__dict__[key.lower()] = val
+
+        if res.screensaver:
+            res.visual = True
 
         return res

@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Callable
 from amazeing import Maze, WallCoord
 import random
 

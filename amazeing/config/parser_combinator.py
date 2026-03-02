@@ -63,7 +63,9 @@ def cut[T](p: Parser[T]) -> Parser[T]:
 
 def tag(tag: str) -> Parser[str]:
     return lambda s: (
-        (s[: len(tag)], s[len(tag) :]) if s.startswith(tag) else None
+        (s[: len(tag)], s[len(tag) :])  # noqa E203
+        if s.startswith(tag)
+        else None
     )
 
 

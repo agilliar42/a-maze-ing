@@ -14,6 +14,11 @@ from amazeing.maze_class.maze_walls import Cardinal, CellCoord
 from amazeing.maze_display.TTYdisplay import TTYTile
 from amazeing.maze_display.backend import IVec2
 
+# from amazeing.maze_display.layout import example
+
+# example()
+# exit(0)
+
 # random.seed(42)
 
 # print(Config.parse(stdin.read()).__dict__)
@@ -29,28 +34,26 @@ pattern.fill(maze)
 
 walls_const = set(maze.walls_full())
 
-backend = TTYBackend(IVec2(*dims), IVec2(1, 1), IVec2(2, 2))
+backend = TTYBackend(IVec2(*dims), IVec2(2, 1), IVec2(2, 1))
 curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLACK)
 black = curses.color_pair(1)
 empty = (" ", black)
 style_empty = backend.add_style(
     TTYTile(
         [
-            [empty, empty, empty],
-            [empty, empty, empty],
-            [empty, empty, empty],
+            [empty, empty, empty, empty],
+            [empty, empty, empty, empty],
         ]
     )
 )
-curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)
+curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_WHITE)
 white = curses.color_pair(2)
-full = ("#", white)
+full = (" ", white)
 style_full = backend.add_style(
     TTYTile(
         [
-            [full, full, full],
-            [full, full, full],
-            [full, full, full],
+            [full, full, full, full],
+            [full, full, full, full],
         ]
     )
 )
@@ -76,9 +79,10 @@ def display_maze(maze: Maze) -> None:
 
 
 maze_make_perfect(maze, callback=display_maze)
-backend.event(-1)
-# maze_make_pacman(maze, walls_const, callback=display_maze)
+maze_make_pacman(maze, walls_const, callback=display_maze)
 while False:
     maze_make_perfect(maze, callback=display_maze)
     maze_make_pacman(maze, walls_const, callback=display_maze)
     maze._rebuild()
+while backend.event(-1) is None:
+    backend.present()

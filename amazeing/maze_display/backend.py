@@ -1,47 +1,51 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Type, cast
 
 
-class IVec2:
-    def __init__(self, x: int, y: int) -> None:
-        self.x: int = x
-        self.y: int = y
+class IVec2[T = int]:
+    def __init__(self, x: T, y: T) -> None:
+        self.x: T = x
+        self.y: T = y
 
     @staticmethod
-    def splat(n: int) -> "IVec2":
+    def splat(n: T) -> "IVec2[T]":
         return IVec2(n, n)
 
     @staticmethod
     def with_op(
-        op: Callable[[int, int], int],
-    ) -> Callable[["IVec2", "int | IVec2"], "IVec2"]:
+        op: Callable[[T, T], T],
+    ) -> Callable[["IVec2[T]", "T | IVec2[T]"], "IVec2[T]"]:
         return lambda self, other: IVec2(
             op(
                 self.x,
                 (
                     other
-                    if isinstance(other, IVec2)
-                    else (other := IVec2.splat(other))
+                    if isinstance(other, type(self))
+                    else (other := type(self).splat(cast(T, other)))
                 ).x,
             ),
-            op(self.y, other.y),
+            op(self.y, cast(IVec2[T], other).y),
         )
 
-    def __mul__(self, other: "int | IVec2") -> "IVec2":
-        return self.with_op(int.__mul__)(self, other)
+    def innertype(self) -> Type:
+        return type(self.x)
 
-    def __add__(self, other: "int | IVec2") -> "IVec2":
-        return self.with_op(int.__add__)(self, other)
+    def __mul__(self, other: "T | IVec2[T]") -> "IVec2[T]":
+        return self.with_op(self.innertype().__mul__)(self, other)
 
-    def __sub__(self, other: "int | IVec2") -> "IVec2":
-        return self.with_op(int.__sub__)(self, other)
+    def __add__(self, other: "T | IVec2[T]") -> "IVec2[T]":
+        return self.with_op(self.innertype().__add__)(self, other)
 
-    def __floordiv__(self, other: "int | IVec2") -> "IVec2":
-        return self.with_op(int.__floordiv__)(self, other)
+    def __sub__(self, other: "T | IVec2[T]") -> "IVec2[T]":
+        return self.with_op(self.innertype().__sub__)(self, other)
 
-    def __mod__(self, other: "int | IVec2") -> "IVec2":
-        return self.with_op(int.__mod__)(self, other)
+    def __floordiv__(self, other: "T| IVec2[T]") -> "IVec2[T]":
+        return self.with_op(self.innertype().__floordiv__)(self, other)
+
+    def __mod__(self, other: "T | IVec2[T]") -> "IVec2[T]":
+        return self.with_op(self.innertype().__mod__)(self, other)
 
 
 @dataclass
