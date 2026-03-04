@@ -1,3 +1,4 @@
+from sys import stderr
 from amazeing.maze_display.layout import (
     BInt,
     Box,
@@ -25,7 +26,10 @@ class TTYTile:
             for x, (char, attrs) in enumerate(
                 line[src.x : src.x + size.x]  # noqa E203
             ):
-                window.addch(dst.y + y, dst.x + x, char, attrs)
+                try:
+                    window.addch(dst.y + y, dst.x + x, char, attrs)
+                except curses.error:
+                    pass  # dumb exception when writing bottom right corner
 
 
 class TTYTileMap:
@@ -58,7 +62,51 @@ class TTYTileMap:
 
 
 class ScrollablePad:
-    pass
+    def __init__(
+        self,
+        dims: IVec2,
+        constrained: bool = True,
+        init_pos: IVec2 = IVec2.splat(0),
+    ) -> None:
+        self.__pos = init_pos
+        self.pad: curses.window = curses.newpad(dims.y, dims.x)
+        self.constrained = constrained
+
+    def dims(self) -> IVec2:
+        y, x = self.pad.getmaxyx()
+        return IVec2(x, y)
+
+    def clamp(self, dims: IVec2) -> None:
+        self.__pos = IVec2.with_op(min)(
+            IVec2.with_op(max)(self.__pos, dims - self.dims()), IVec2.splat(0)
+        )
+
+    def refresh(self, at: IVec2, into: IVec2) -> None:
+        if self.constrained:
+            self.clamp(into)
+
+        pad_start = IVec2.with_op(max)(
+            IVec2.splat(0) - self.__pos, IVec2.splat(0)
+        )
+        win_start = IVec2.with_op(max)(self.__pos, IVec2.splat(0))
+        draw_dim = IVec2.with_op(min)(
+            self.dims() - pad_start, into - win_start
+        )
+        if draw_dim.x <= 0 or draw_dim.y <= 0:
+            return
+        draw_start = at + win_start
+        draw_end = draw_start + draw_dim - IVec2.splat(1)
+        self.pad.refresh(
+            *pad_start.yx(),
+            *draw_start.yx(),
+            *draw_end.yx(),
+        )
+
+    def move(self, by: IVec2) -> None:
+        self.__pos = self.__pos + by
+
+    def scroll(self, by: IVec2) -> None:
+        self.move(by * IVec2.splat(-1))
 
 
 class TTYBackend(Backend[int]):
@@ -82,14 +130,12 @@ class TTYBackend(Backend[int]):
         curses.curs_set(0)
         self.__screen.keypad(True)
 
-        self.__pad: curses.window = curses.newpad(dims.y + 1, dims.x + 1)
+        self.__pad: ScrollablePad = ScrollablePad(dims)
         self.__dims = maze_dims
 
         maze_box = FBox(
             IVec2(BInt(dims.x), BInt(dims.y)),
-            lambda at, into: self.__pad.refresh(
-                0, 0, at.y, at.x, at.y + into.y - 1, at.x + into.x - 1
-            ),
+            self.__pad.refresh,
         )
         self.__layout: Box = VBox.noassoc(
             layout_fair,
@@ -114,12 +160,13 @@ class TTYBackend(Backend[int]):
         return self.__dims
 
     def draw_tile(self, pos: IVec2) -> None:
-        self.__tilemap.draw_at(pos, self.__style, self.__pad)
+        self.__tilemap.draw_at(pos, self.__style, self.__pad.pad)
 
     def set_style(self, style: int) -> None:
         self.__style = style
 
     def present(self) -> None:
+        self.__screen.erase()
         self.__screen.refresh()
         y, x = self.__screen.getmaxyx()
         self.__layout.laid_out(IVec2(0, 0), IVec2(x, y))
@@ -128,9 +175,19 @@ class TTYBackend(Backend[int]):
         self.__screen.timeout(timeout_ms)
         try:
             key = self.__screen.getkey()
-            if key == "KEY_RESIZE":
-                self.__screen.erase()
-                return None
-            return KeyboardInput(key)
         except curses.error:
             return None
+        match key:
+            case "KEY_RESIZE":
+                pass
+            case "KEY_DOWN":
+                self.__pad.scroll(IVec2(0, 1))
+            case "KEY_UP":
+                self.__pad.scroll(IVec2(0, -1))
+            case "KEY_RIGHT":
+                self.__pad.scroll(IVec2(1, 0))
+            case "KEY_LEFT":
+                self.__pad.scroll(IVec2(-1, 0))
+            case _:
+                return KeyboardInput(key)
+        self.present()

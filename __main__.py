@@ -1,4 +1,5 @@
 import curses
+import time
 from amazeing import (
     Maze,
     TTYBackend,
@@ -12,7 +13,7 @@ from sys import stderr, stdin
 from amazeing.config.config_parser import Config
 from amazeing.maze_class.maze_walls import Cardinal, CellCoord
 from amazeing.maze_display.TTYdisplay import TTYTile
-from amazeing.maze_display.backend import IVec2
+from amazeing.maze_display.backend import BackendEvent, CloseRequested, IVec2
 
 # from amazeing.maze_display.layout import example
 
@@ -74,8 +75,23 @@ def display_maze(maze: Maze) -> None:
         for pixel in wall.tile_coords():
             backend.draw_tile(pixel)
     backend.present()
-    if backend.event(0) is not None:
-        exit()
+    poll_events(0)
+
+
+def poll_events(timeout_ms: int = -1) -> None:
+    start = time.monotonic()
+    elapsed_ms = lambda: int((time.monotonic() - start) * 1000.0)
+    timeout = lambda: (
+        max(timeout_ms - elapsed_ms(), 0) if timeout_ms != -1 else -1
+    )
+    while True:
+        event = backend.event(timeout())
+        if event is None:
+            if timeout_ms == -1:
+                continue
+            return
+        if isinstance(event, CloseRequested) or event.sym == "q":
+            exit(0)
 
 
 maze_make_perfect(maze, callback=display_maze)
@@ -84,5 +100,4 @@ while False:
     maze_make_perfect(maze, callback=display_maze)
     maze_make_pacman(maze, walls_const, callback=display_maze)
     maze._rebuild()
-while backend.event(-1) is None:
-    backend.present()
+poll_events()

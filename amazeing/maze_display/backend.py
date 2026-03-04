@@ -47,6 +47,12 @@ class IVec2[T = int]:
     def __mod__(self, other: "T | IVec2[T]") -> "IVec2[T]":
         return self.with_op(self.innertype().__mod__)(self, other)
 
+    def xy(self) -> tuple[T, T]:
+        return (self.x, self.y)
+
+    def yx(self) -> tuple[T, T]:
+        return (self.y, self.x)
+
 
 @dataclass
 class KeyboardInput:
