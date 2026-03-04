@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from typing import Any, Type
 from .parser_combinator import (
     ParseResult,
@@ -9,6 +9,7 @@ from .parser_combinator import (
     cut,
     delimited,
     fold,
+    many,
     many_count,
     none_of,
     one_of,
@@ -32,7 +33,7 @@ def parse_int(s: str) -> ParseResult[int]:
     return parser_map(int, recognize(many_count(ascii_digit, min_n=1)))(s)
 
 
-def parse_space(s: str) -> ParseResult[str]:
+def multispace0(s: str) -> ParseResult[str]:
     return recognize(many_count(one_of(" \t")))(s)
 
 
@@ -40,11 +41,15 @@ def parse_comment(s: str) -> ParseResult[str]:
     return recognize(seq(tag("#"), many_count(none_of("\n"))))(s)
 
 
+def spaced[T](parser: Parser[T]) -> Parser[T]:
+    return delimited(multispace0, parser, multispace0)
+
+
 def parse_coord(s: str) -> ParseResult[tuple[int, int]]:
     return pair(
         terminated(
             parse_int,
-            delimited(parse_space, tag(","), parse_space),
+            delimited(multispace0, tag(","), multispace0),
         ),
         parse_int,
     )(s)
@@ -52,6 +57,76 @@ def parse_coord(s: str) -> ParseResult[tuple[int, int]]:
 
 def parse_path(s: str) -> ParseResult[str]:
     return recognize(many_count(none_of("\n"), min_n=1))(s)
+
+
+def char_range(a: str, b: str) -> str:
+    res = ""
+    for c in range(ord(a), ord(b) + 1):
+        res = res + chr(c)
+    return res
+
+
+def parse_varname(s: str) -> ParseResult[str]:
+    varstart = "_" + char_range("a", "z") + char_range("A", "Z")
+    vartail = varstart + char_range("0", "9")
+    return recognize(seq(one_of(varstart), many_count(one_of(vartail))))(s)
+
+
+type Color = tuple[int, int, int] | str
+type ColorPair = tuple[Color, Color]
+
+type ColoredLine = list[tuple[ColorPair, str]]
+
+
+def parse_color(s: str) -> ParseResult[Color]:
+    return alt(
+        parser_map(
+            lambda l: (l[0], l[1], l[2]),
+            many(parse_int, 3, 3, spaced(tag(","))),
+        ),
+        parse_varname,
+    )(s)
+
+
+def parse_color_pair(s: str) -> ParseResult[ColorPair]:
+    return parser_map(
+        lambda l: (l[0], l[1]),
+        many(parse_color, 2, 2, spaced(tag(":"))),
+    )(s)
+
+
+def parse_colored_line(
+    s: str,
+) -> ParseResult[ColoredLine]:
+    """
+    returns a list of a color pair variable associated with its string
+    """
+    color_prefix = delimited(
+        tag("{"), cut(spaced(parse_color_pair)), cut(tag("}"))
+    )
+    noncolor_str = fold(
+        alt(
+            none_of('\n{\\"'),
+            preceeded(
+                tag("\\"),
+                cut(
+                    alt(
+                        value("{", tag("{")),
+                        value("\\", tag("\\")),
+                        value('"', tag('"')),
+                    )
+                ),
+            ),
+        ),
+        lambda a, b: a + b,
+        "",
+    )
+
+    return spaced(
+        delimited(
+            tag('"'), many(pair(color_prefix, cut(noncolor_str))), tag('"')
+        )
+    )(s)
 
 
 class ConfigException(Exception):
@@ -71,9 +146,8 @@ class ConfigField[T](ABC):
     def default(self) -> T:
         if self.__default is None:
             raise ConfigException(
-                "Value "
-                + self.__name
-                + " not provided, and no default value exists"
+                f"Value {self.__name} not provided, "
+                + "and no default value exists"
             )
         return self.__default()
 
@@ -83,7 +157,7 @@ class ConfigField[T](ABC):
         if len(vals) == 1:
             return vals[0]
         raise ConfigException(
-            "More than one definition of config field " + self.__name
+            f"More than one definition of config field {self.__name}"
         )
 
     def name(self) -> str:
@@ -120,7 +194,7 @@ def OptionalField[T](cls: Type[ConfigField[T]]) -> Type[ConfigField[T | None]]:
 def DefaultedField[T](
     cls: Type[ConfigField[T]], default: T
 ) -> Type[ConfigField[T]]:
-    class Inner(ConfigField[T]):
+    class Inner(cls):
         def __init__(
             self,
             name: str,
@@ -128,9 +202,49 @@ def DefaultedField[T](
         ) -> None:
             super().__init__(name, default)
 
-        parse = cls.parse
+    return Inner
+
+
+def DefaultedStrField[T](
+    cls: Type[ConfigField[T]], default_strs: list[str]
+) -> Type[ConfigField[T]]:
+    class Inner(cls):
+        def __init__(
+            self,
+            name: str,
+            default: Callable[[], T] | None = None,
+        ) -> None:
+            super().__init__(name, default)
+
+        def default(self) -> T:
+            acc = []
+            for s in default_strs:
+                res = self.parse(s)
+                if res is None or res[1] != "":
+                    raise ConfigException(
+                        "Failed to construct defaulted field " + self.name()
+                    )
+                acc.append(res[0])
+            return self.merge(acc)
 
     return Inner
+
+
+def ListParser[T](parser: Parser[T]) -> Type[ConfigField[list[T]]]:
+    class Inner(ConfigField[list[T]]):
+        def parse(self, s: str) -> ParseResult[list[T]]:
+            return parser_map(lambda e: [e], parser)(s)
+
+        def default(self) -> list[T]:
+            return []
+
+        def merge(self, vals: list[list[T]]) -> list[T]:
+            return [e for l in vals for e in l]
+
+    return Inner
+
+
+ColoredLineField = ListParser(parse_colored_line)
 
 
 def line_parser[T](
@@ -140,10 +254,10 @@ def line_parser[T](
         parser_map(lambda _: None, parse_comment),
         *(
             preceeded(
-                seq(tag(name), parse_space, tag("="), parse_space),
+                seq(tag(name), multispace0, tag("="), multispace0),
                 parser_map(
                     (lambda name: lambda res: (name, res))(name),
-                    cut(field.parse),
+                    cut(terminated(field.parse, multispace0)),
                 ),
             )
             for name, field in fields.items()
@@ -194,6 +308,11 @@ class Config:
     screensaver: bool
     visual: bool
     interactive: bool
+    tilemap_wall_size: tuple[int, int]
+    tilemap_cell_size: tuple[int, int]
+    tilemap_full: list[ColoredLine]
+    tilemap_empty: list[ColoredLine]
+    tilemap_background: list[ColoredLine]
 
     def __init__(self) -> None:
         pass
@@ -213,6 +332,20 @@ class Config:
                     "SCREENSAVER": DefaultedField(BoolField, False),
                     "VISUAL": DefaultedField(BoolField, False),
                     "INTERACTIVE": DefaultedField(BoolField, False),
+                    "TILEMAP_WALL_SIZE": DefaultedField(CoordField, (2, 1)),
+                    "TILEMAP_CELL_SIZE": DefaultedField(CoordField, (2, 1)),
+                    "TILEMAP_FULL": DefaultedStrField(
+                        ColoredLineField,
+                        ['"{WHITE:WHITE}    "', '"{WHITE:WHITE}    "'],
+                    ),
+                    "TILEMAP_EMPTY": DefaultedStrField(
+                        ColoredLineField,
+                        ['"{BLACK:BLACK}    "', '"{BLACK:BLACK}    "'],
+                    ),
+                    "TILEMAP_BACKGROUND": DefaultedStrField(
+                        ColoredLineField,
+                        ['"{BLACK:BLACK}    "', '"{BLACK:BLACK}    "'],
+                    ),
                 }
             )
         )(s)

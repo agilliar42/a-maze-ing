@@ -7,24 +7,19 @@ from amazeing import (
     maze_make_pacman,
     maze_make_perfect,
 )
-from time import sleep
-from sys import stderr, stdin
+import random
 
 from amazeing.config.config_parser import Config
 from amazeing.maze_class.maze_walls import Cardinal, CellCoord
 from amazeing.maze_display.TTYdisplay import Tile
 from amazeing.maze_display.backend import BackendEvent, CloseRequested, IVec2
 
-# from amazeing.maze_display.layout import example
+config = Config.parse(open("./example.conf").read())
 
-# example()
-# exit(0)
+if config.seed is not None:
+    random.seed(config.seed)
 
-# random.seed(42)
-
-# print(Config.parse(stdin.read()).__dict__)
-
-dims = (15, 15)
+dims = (config.width, config.height)
 
 maze = Maze(dims)
 
@@ -61,19 +56,32 @@ style_full = backend.add_style(
 
 
 def clear_backend() -> None:
-    dims = backend.dims() * 2 + 1
     backend.set_style(style_empty)
-    for x in range(dims.x):
-        for y in range(dims.y):
-            backend.draw_tile(IVec2(x, y))
+    for wall in maze.walls_dirty():
+        if maze.get_wall(wall).is_full():
+            continue
+        for tile in wall.tile_coords():
+            backend.draw_tile(tile)
+            pass
 
 
 def display_maze(maze: Maze) -> None:
     clear_backend()
     backend.set_style(style_full)
-    for wall in maze.walls_full():
+
+    rewrites = {
+        wall for wall in maze.walls_dirty() if maze.get_wall(wall).is_full()
+    } | {
+        e
+        for wall in maze.walls_dirty()
+        for e in wall.neighbours()
+        if maze._check_coord(e) and maze.get_wall(e).is_full()
+    }
+
+    for wall in rewrites:
         for pixel in wall.tile_coords():
             backend.draw_tile(pixel)
+    maze.clear_dirty()
     backend.present()
     poll_events(0)
 
@@ -96,7 +104,7 @@ def poll_events(timeout_ms: int = -1) -> None:
 
 maze_make_perfect(maze, callback=display_maze)
 maze_make_pacman(maze, walls_const, callback=display_maze)
-while False:
+while True:
     maze_make_perfect(maze, callback=display_maze)
     maze_make_pacman(maze, walls_const, callback=display_maze)
     maze._rebuild()

@@ -12,9 +12,12 @@ class Maze:
     def __init__(self, dims: tuple[int, int]) -> None:
         self.__width: int = dims[0]
         self.__height: int = dims[1]
+        self.__dirty: set[WallCoord] = set()
         self._clear()
 
     def _clear(self) -> None:
+        if hasattr(self, "horizontal") and hasattr(self, "vertical"):
+            self.__dirty ^= {wall for wall in self.walls_full()}
         # list of lines
         self.horizontal: list[list[MazeWall]] = [
             [MazeWall() for _ in range(0, self.__width)]
@@ -48,6 +51,7 @@ class Maze:
         wall = self.get_wall(coord)
         if wall.network_id is not None:
             self.networks[wall.network_id].remove_wall(coord)
+            self.__dirty ^= {coord}
             wall.network_id = None
 
     def all_walls(self) -> Generator[WallCoord]:
@@ -84,26 +88,28 @@ class Maze:
         network.add_wall(id)
         self.networks[network_id] = network
 
-    def fill_wall(self, id: WallCoord) -> None:
-        wall = self.get_wall(id)
+    def fill_wall(self, coord: WallCoord) -> None:
+        wall = self.get_wall(coord)
 
         if wall.is_full():
             return
 
+        self.__dirty ^= {coord}
+
         networks = {
             cast(NetworkID, neighbour.network_id)
-            for neighbour in self.get_neighbours(id)
+            for neighbour in self.get_neighbours(coord)
             if neighbour.is_full()
         }
 
         if len(networks) == 0:
-            return self._fill_wall_alone(id, wall)
+            return self._fill_wall_alone(coord, wall)
 
         dest_id = max(networks, key=lambda n: self.networks[n].size())
         dest = self.networks[dest_id]
 
         wall.network_id = dest_id
-        dest.add_wall(id)
+        dest.add_wall(coord)
 
         for to_merge in filter(lambda n: n != dest_id, networks):
             for curr in self.networks[to_merge].walls:
@@ -129,6 +135,9 @@ class Maze:
 
     def walls_full(self) -> Iterable[WallCoord]:
         return filter(lambda w: self.get_wall(w).is_full(), self.all_walls())
+
+    def walls_dirty(self) -> Iterable[WallCoord]:
+        return self.__dirty
 
     def walls_empty(self) -> Iterable[WallCoord]:
         return filter(
@@ -174,3 +183,6 @@ class Maze:
             else []
         )
         return leaf_f(WallCoord.a_neighbours) + leaf_f(WallCoord.b_neighbours)
+
+    def clear_dirty(self) -> None:
+        self.__dirty = set()
