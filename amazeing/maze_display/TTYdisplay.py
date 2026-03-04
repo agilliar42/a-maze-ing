@@ -1,4 +1,4 @@
-from sys import stderr
+from collections.abc import Generator
 from amazeing.maze_display.layout import (
     BInt,
     Box,
@@ -13,32 +13,92 @@ from .backend import Backend, IVec2, BackendEvent, KeyboardInput
 import curses
 
 
-class TTYTile:
+def pad_write_safe(
+    pad: curses.window, dst: IVec2, char: str, attrs: int
+) -> None:
+    try:
+        pad.addch(dst.y, dst.x, char, attrs)
+    except curses.error:
+        pass  # dumb exception when writing bottom right corner
+
+
+class Tile:
     def __init__(self, pixels: list[list[tuple[str, int]]]) -> None:
-        self.__pixels: list[list[tuple[str, int]]] = pixels
+        dims = IVec2(max(map(len, pixels), default=0), len(pixels))
+        self.__pad: curses.window = curses.newpad(dims.y, dims.x)
+        for y, line in enumerate(pixels):
+            for x, (char, attrs) in enumerate(line):
+                pad_write_safe(self.__pad, IVec2(x, y), char, attrs)
+
+    def dims(self) -> IVec2:
+        y, x = self.__pad.getmaxyx()
+        return IVec2(x, y)
 
     def blit(
         self, src: IVec2, dst: IVec2, size: IVec2, window: curses.window
     ) -> None:
-        for y, line in enumerate(
-            self.__pixels[src.y : src.y + size.y]  # noqa E203
-        ):
-            for x, (char, attrs) in enumerate(
-                line[src.x : src.x + size.x]  # noqa E203
-            ):
-                try:
-                    window.addch(dst.y + y, dst.x + x, char, attrs)
-                except curses.error:
-                    pass  # dumb exception when writing bottom right corner
+        if size.x <= 0 or size.y <= 0:
+            return
+        self.__pad.overwrite(
+            window, *src.yx(), *dst.yx(), *(dst + size - IVec2.splat(1)).yx()
+        )
+
+    def blit_wrapping(
+        self,
+        src: IVec2,
+        dst: IVec2,
+        size: IVec2,
+        window: curses.window,
+        justify: IVec2 = IVec2.splat(0),
+    ) -> None:
+        def size_offset_iter(
+            start: int, size: int, mod: int
+        ) -> Generator[tuple[int, int]]:
+            pos = 0
+            while pos < size:
+                step = min(mod - (start + pos) % mod, size - pos)
+                yield (step, pos)
+                pos += step
+
+        if size.x <= 0 or size.y <= 0:
+            return
+        dims = self.dims()
+        justify_offset = dims - (src + size) % dims
+        src = src + justify_offset * justify
+        src = src % dims
+        for x_size, x_offset in size_offset_iter(src.x, size.x, dims.x):
+            for y_size, y_offset in size_offset_iter(src.y, size.y, dims.y):
+                sub_size = IVec2(x_size, y_size)
+                offset = IVec2(x_offset, y_offset)
+                self.blit(src + offset, dst + offset, sub_size, window)
 
 
-class TTYTileMap:
+class SubTile(Tile):
+    def __init__(self, tile: Tile, start: IVec2, size: IVec2) -> None:
+        # we do not call super as we only inherit for the blit_wrapping method
+        # it's dirty but it works
+        self.__tile: Tile = tile
+        self.__start: IVec2 = start
+        self.__size: IVec2 = size
+
+    def dims(self) -> IVec2:
+        return self.__size
+
+    def blit(
+        self, src: IVec2, dst: IVec2, size: IVec2, window: curses.window
+    ) -> None:
+        if size.x <= 0 or size.y <= 0:
+            return
+        self.__tile.blit(src + self.__start, dst, size, window)
+
+
+class MazeTileMap:
     def __init__(self, wall_dim: IVec2, cell_dim: IVec2) -> None:
         self.__wall_dim: IVec2 = wall_dim
         self.__cell_dim: IVec2 = cell_dim
-        self.__tiles: list[TTYTile] = []
+        self.__tiles: list[Tile] = []
 
-    def add_tile(self, tile: TTYTile) -> int:
+    def add_tile(self, tile: Tile) -> int:
         res = len(self.__tiles)
         self.__tiles.append(tile)
         return res
@@ -110,15 +170,11 @@ class ScrollablePad:
 
 
 class TTYBackend(Backend[int]):
-    """
-    Takes the ABC Backend and displays the maze in the terminal.
-    """
-
     def __init__(
         self, maze_dims: IVec2, wall_dim: IVec2, cell_dim: IVec2
     ) -> None:
         super().__init__()
-        self.__tilemap: TTYTileMap = TTYTileMap(wall_dim, cell_dim)
+        self.__tilemap: MazeTileMap = MazeTileMap(wall_dim, cell_dim)
         self.__style = 0
 
         dims = self.__tilemap.dst_coord(maze_dims * 2 + 1)
@@ -146,6 +202,8 @@ class TTYBackend(Backend[int]):
             ],
         )
 
+        self.__resize: bool = False
+
     def __del__(self):
         curses.curs_set(1)
         curses.nocbreak()
@@ -153,7 +211,7 @@ class TTYBackend(Backend[int]):
         curses.echo()
         curses.endwin()
 
-    def add_style(self, style: TTYTile) -> int:
+    def add_style(self, style: Tile) -> int:
         return self.__tilemap.add_tile(style)
 
     def dims(self) -> IVec2:
@@ -166,7 +224,9 @@ class TTYBackend(Backend[int]):
         self.__style = style
 
     def present(self) -> None:
-        self.__screen.erase()
+        if self.__resize:
+            self.__resize = False
+            self.__screen.erase()
         self.__screen.refresh()
         y, x = self.__screen.getmaxyx()
         self.__layout.laid_out(IVec2(0, 0), IVec2(x, y))
@@ -179,7 +239,7 @@ class TTYBackend(Backend[int]):
             return None
         match key:
             case "KEY_RESIZE":
-                pass
+                self.__resize = True
             case "KEY_DOWN":
                 self.__pad.scroll(IVec2(0, 1))
             case "KEY_UP":

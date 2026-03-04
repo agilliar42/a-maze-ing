@@ -12,7 +12,7 @@ from sys import stderr, stdin
 
 from amazeing.config.config_parser import Config
 from amazeing.maze_class.maze_walls import Cardinal, CellCoord
-from amazeing.maze_display.TTYdisplay import TTYTile
+from amazeing.maze_display.TTYdisplay import Tile
 from amazeing.maze_display.backend import BackendEvent, CloseRequested, IVec2
 
 # from amazeing.maze_display.layout import example
@@ -40,7 +40,7 @@ curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLACK)
 black = curses.color_pair(1)
 empty = (" ", black)
 style_empty = backend.add_style(
-    TTYTile(
+    Tile(
         [
             [empty, empty, empty, empty],
             [empty, empty, empty, empty],
@@ -51,7 +51,7 @@ curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_WHITE)
 white = curses.color_pair(2)
 full = (" ", white)
 style_full = backend.add_style(
-    TTYTile(
+    Tile(
         [
             [full, full, full, full],
             [full, full, full, full],

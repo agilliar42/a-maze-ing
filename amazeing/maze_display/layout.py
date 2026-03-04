@@ -136,6 +136,9 @@ class FBox(Box):
         self.__dims: BVec2 = dims
         self.__cb: Callable[[IVec2, IVec2], None] = cb
 
+    def set_dims(self, dims: IVec2[BInt]) -> None:
+        self.__dims = dims
+
     def dims(self) -> BVec2:
         return self.__dims
 
