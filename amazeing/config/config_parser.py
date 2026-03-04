@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from typing import Any, Type
+
+from amazeing.maze_display.backend import IVec2
 from .parser_combinator import (
     ParseResult,
     Parser,
@@ -45,13 +47,16 @@ def spaced[T](parser: Parser[T]) -> Parser[T]:
     return delimited(multispace0, parser, multispace0)
 
 
-def parse_coord(s: str) -> ParseResult[tuple[int, int]]:
-    return pair(
-        terminated(
+def parse_coord(s: str) -> ParseResult[IVec2]:
+    return parser_map(
+        lambda e: IVec2(*e),
+        pair(
+            terminated(
+                parse_int,
+                delimited(multispace0, tag(","), multispace0),
+            ),
             parse_int,
-            delimited(multispace0, tag(","), multispace0),
         ),
-        parse_int,
     )(s)
 
 
@@ -174,8 +179,8 @@ class BoolField(ConfigField[bool]):
         return parse_bool(s)
 
 
-class CoordField(ConfigField[tuple[int, int]]):
-    def parse(self, s: str) -> ParseResult[tuple[int, int]]:
+class CoordField(ConfigField[IVec2]):
+    def parse(self, s: str) -> ParseResult[IVec2]:
         return parse_coord(s)
 
 
@@ -300,16 +305,16 @@ def fields_parser(
 class Config:
     width: int
     height: int
-    entry: tuple[int, int] | None
-    exit: tuple[int, int] | None
+    entry: IVec2 | None
+    exit: IVec2 | None
     output_file: str | None
     perfect: bool
     seed: int | None
     screensaver: bool
     visual: bool
     interactive: bool
-    tilemap_wall_size: tuple[int, int]
-    tilemap_cell_size: tuple[int, int]
+    tilemap_wall_size: IVec2
+    tilemap_cell_size: IVec2
     tilemap_full: list[ColoredLine]
     tilemap_empty: list[ColoredLine]
     tilemap_background: list[ColoredLine]

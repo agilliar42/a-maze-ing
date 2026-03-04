@@ -1,3 +1,4 @@
+from amazeing.maze_display.backend import IVec2
 from .maze import Maze
 from .maze_walls import CellCoord
 from typing import Callable
@@ -20,32 +21,29 @@ class Pattern:
             if char != " "
         }
 
-    def offset(self, by: tuple[int, int]) -> "Pattern":
+    def offset(self, by: IVec2) -> "Pattern":
         pattern: Pattern = Pattern([])
         pattern.cells = {cell.offset(by) for cell in self.cells}
         return pattern
 
-    def dims(self) -> tuple[int, int]:
+    def dims(self) -> IVec2:
         dim_by: Callable[[Callable[[CellCoord], int]], int] = lambda f: (
             max(map(lambda c: f(c) + 1, self.cells), default=0)
             - min(map(f, self.cells), default=0)
         )
-        return (dim_by(CellCoord.x), dim_by(CellCoord.y))
+        return IVec2(dim_by(CellCoord.x), dim_by(CellCoord.y))
 
     def normalized(self) -> "Pattern":
         min_by: Callable[[Callable[[CellCoord], int]], int] = lambda f: min(
             map(f, self.cells), default=0
         )
-        offset: tuple[int, int] = (-min_by(CellCoord.x), -min_by(CellCoord.y))
+        offset = IVec2(-min_by(CellCoord.x), -min_by(CellCoord.y))
         return self.offset(offset)
 
-    def centered_for(self, canvas: tuple[int, int]) -> "Pattern":
+    def centered_for(self, canvas: IVec2) -> "Pattern":
         normalized: Pattern = self.normalized()
-        dims: tuple[int, int] = normalized.dims()
-        offset: tuple[int, int] = (
-            (canvas[0] - dims[0]) // 2,
-            (canvas[1] - dims[1]) // 2,
-        )
+        dims = normalized.dims()
+        offset = (canvas - dims) // 2
         return normalized.offset(offset)
 
     def fill(self, maze: "Maze") -> None:

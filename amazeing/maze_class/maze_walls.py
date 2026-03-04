@@ -176,8 +176,8 @@ class CellCoord:
     def pixel_coords(self) -> Iterable[IVec2]:
         return [IVec2(self.__x * 2 + 1, self.__y * 2 + 1)]
 
-    def offset(self, by: tuple[int, int]) -> "CellCoord":
-        return CellCoord(self.__x + by[0], self.__y + by[1])
+    def offset(self, by: IVec2) -> "CellCoord":
+        return CellCoord(self.__x + by.x, self.__y + by.y)
 
     def x(self) -> int:
         return self.__x

@@ -1,4 +1,6 @@
 from typing import Callable, Generator, Iterable, cast
+
+from amazeing.maze_display.backend import IVec2
 from .maze_walls import (
     MazeWall,
     NetworkID,
@@ -9,9 +11,8 @@ from .maze_walls import (
 
 
 class Maze:
-    def __init__(self, dims: tuple[int, int]) -> None:
-        self.__width: int = dims[0]
-        self.__height: int = dims[1]
+    def __init__(self, dims: IVec2) -> None:
+        self.__dims = dims
         self.__dirty: set[WallCoord] = set()
         self._clear()
 
@@ -20,13 +21,13 @@ class Maze:
             self.__dirty ^= {wall for wall in self.walls_full()}
         # list of lines
         self.horizontal: list[list[MazeWall]] = [
-            [MazeWall() for _ in range(0, self.__width)]
-            for _ in range(0, self.__height + 1)
+            [MazeWall() for _ in range(0, self.__dims.x)]
+            for _ in range(0, self.__dims.y + 1)
         ]
         # list of lines
         self.vertical: list[list[MazeWall]] = [
-            [MazeWall() for _ in range(0, self.__height)]
-            for _ in range(0, self.__width + 1)
+            [MazeWall() for _ in range(0, self.__dims.y)]
+            for _ in range(0, self.__dims.x + 1)
         ]
         self.networks: dict[NetworkID, WallNetwork] = {}
 
@@ -56,8 +57,8 @@ class Maze:
 
     def all_walls(self) -> Generator[WallCoord]:
         for orientation, a_count, b_count in [
-            (Orientation.HORIZONTAL, self.__height + 1, self.__width),
-            (Orientation.VERTICAL, self.__width + 1, self.__height),
+            (Orientation.HORIZONTAL, self.__dims.y + 1, self.__dims.x),
+            (Orientation.VERTICAL, self.__dims.x + 1, self.__dims.y),
         ]:
             for a in range(0, a_count):
                 for b in range(0, b_count):
@@ -67,9 +68,9 @@ class Maze:
         if coord.a < 0 or coord.b < 0:
             return False
         (a_max, b_max) = (
-            (self.__height, self.__width - 1)
+            (self.__dims.y, self.__dims.x - 1)
             if coord.orientation == Orientation.HORIZONTAL
-            else (self.__width, self.__height - 1)
+            else (self.__dims.x, self.__dims.y - 1)
         )
         if coord.a > a_max or coord.b > b_max:
             return False
@@ -119,14 +120,18 @@ class Maze:
             del self.networks[to_merge]
 
     def outline(self) -> None:
-        if self.__width < 1 or self.__height < 1:
+        if self.__dims.x < 1 or self.__dims.y < 1:
             return
         for orientation, a_iter, b_iter in [
-            (Orientation.VERTICAL, (0, self.__width), range(0, self.__height)),
+            (
+                Orientation.VERTICAL,
+                (0, self.__dims.x),
+                range(0, self.__dims.y),
+            ),
             (
                 Orientation.HORIZONTAL,
-                (0, self.__height),
-                range(0, self.__width),
+                (0, self.__dims.y),
+                range(0, self.__dims.x),
             ),
         ]:
             for a in a_iter:

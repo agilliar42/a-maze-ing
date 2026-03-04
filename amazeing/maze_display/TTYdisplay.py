@@ -1,4 +1,5 @@
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
+from ..config.config_parser import Color, Config, ColoredLine, ColorPair
 from amazeing.maze_display.layout import (
     BInt,
     Box,
@@ -11,6 +12,10 @@ from amazeing.maze_display.layout import (
 )
 from .backend import Backend, IVec2, BackendEvent, KeyboardInput
 import curses
+
+
+class BackendException(Exception):
+    pass
 
 
 def pad_write_safe(
@@ -167,6 +172,67 @@ class ScrollablePad:
 
     def scroll(self, by: IVec2) -> None:
         self.move(by * IVec2.splat(-1))
+
+
+def extract_pairs(
+    config: Config, extra_colors: Iterable[ColorPair] = []
+) -> dict[ColorPair, int]:
+    all_tilemaps = (
+        config.tilemap_empty,
+        config.tilemap_full,
+        config.tilemap_background,
+    )
+    pairs = {
+        pair
+        for tilemap in all_tilemaps
+        for line in tilemap
+        for pair, _ in line
+    } | set(extra_colors)
+    colors = {color for pair in pairs for color in pair}
+    var_colors = {color for color in colors if isinstance(color, str)}
+    value_colors = {color for color in colors if not isinstance(color, str)}
+    color_lookup = {
+        "BLACK": curses.COLOR_BLACK,
+        "BLUE": curses.COLOR_BLUE,
+        "CYAN": curses.COLOR_CYAN,
+        "GREEN": curses.COLOR_GREEN,
+        "MAGENTA": curses.COLOR_MAGENTA,
+        "RED": curses.COLOR_RED,
+        "WHITE": curses.COLOR_WHITE,
+        "YELLOW": curses.COLOR_YELLOW,
+    }
+    available_colors = {i for i in range(0, curses.COLORS)}
+    res_colors: dict[Color, int] = {}
+    for color in var_colors:
+        if color not in color_lookup:
+            raise BackendException("Unknown color " + color + " in config")
+        res_colors[color] = color_lookup[color]
+        available_colors -= {color_lookup[color]}
+    if len(available_colors) < len(value_colors):
+        raise BackendException(
+            "Too many value color values in config: "
+            + f"maximum: {len(available_colors)}, "
+            + f"got: {len(value_colors)}"
+        )
+    for color, color_number in zip(value_colors, available_colors):
+        curses.init_color(
+            color_number, *(min(0, max(1000, channel)) for channel in color)
+        )
+        res_colors[color] = color_number
+    available_pairs = {i for i in range(1, curses.COLOR_PAIRS)}
+    if len(available_pairs) < len(pairs):
+        raise BackendException(
+            "Too many color pairs in config: "
+            + f"maximum: {len(available_pairs)}, "
+            + f"got: {len(pairs)}"
+        )
+    res_pairs = {}
+    for colors, pair_number in zip(pairs, available_pairs):
+        fg, bg = colors
+        curses.init_pair(pair_number, res_colors[fg], res_colors[bg])
+        res_pairs[colors] = pair_number
+
+    return res_pairs
 
 
 class TTYBackend(Backend[int]):

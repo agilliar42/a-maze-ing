@@ -11,7 +11,7 @@ import random
 
 from amazeing.config.config_parser import Config
 from amazeing.maze_class.maze_walls import Cardinal, CellCoord
-from amazeing.maze_display.TTYdisplay import Tile
+from amazeing.maze_display.TTYdisplay import Tile, extract_pairs
 from amazeing.maze_display.backend import BackendEvent, CloseRequested, IVec2
 
 config = Config.parse(open("./example.conf").read())
@@ -19,7 +19,7 @@ config = Config.parse(open("./example.conf").read())
 if config.seed is not None:
     random.seed(config.seed)
 
-dims = (config.width, config.height)
+dims = IVec2(config.width, config.height)
 
 maze = Maze(dims)
 
@@ -30,7 +30,7 @@ pattern.fill(maze)
 
 walls_const = set(maze.walls_full())
 
-backend = TTYBackend(IVec2(*dims), IVec2(2, 1), IVec2(2, 1))
+backend = TTYBackend(dims, IVec2(2, 1), IVec2(2, 1))
 curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLACK)
 black = curses.color_pair(1)
 empty = (" ", black)
