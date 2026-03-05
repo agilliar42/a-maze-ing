@@ -106,6 +106,7 @@ def parse_colored_line(
     """
     returns a list of a color pair variable associated with its string
     """
+
     color_prefix = delimited(
         tag("{"), cut(spaced(parse_color_pair)), cut(tag("}"))
     )
@@ -124,12 +125,26 @@ def parse_colored_line(
             ),
         ),
         lambda a, b: a + b,
-        "",
+        lambda: "",
     )
 
     return spaced(
         delimited(
             tag('"'), many(pair(color_prefix, cut(noncolor_str))), tag('"')
+        )
+    )(s)
+
+
+def parse_str_line(s: str) -> ParseResult[str]:
+    return spaced(
+        delimited(
+            tag('"'),
+            recognize(
+                many_count(
+                    none_of('"\n'),
+                )
+            ),
+            tag('"'),
         )
     )(s)
 
@@ -237,19 +252,27 @@ def DefaultedStrField[T](
 
 def ListParser[T](parser: Parser[T]) -> Type[ConfigField[list[T]]]:
     class Inner(ConfigField[list[T]]):
+        def __init__(
+            self, name: str, default: Callable[[], list[T]] | None = lambda: []
+        ) -> None:
+            super().__init__(name, default)
+
         def parse(self, s: str) -> ParseResult[list[T]]:
             return parser_map(lambda e: [e], parser)(s)
 
-        def default(self) -> list[T]:
-            return []
-
         def merge(self, vals: list[list[T]]) -> list[T]:
-            return [e for l in vals for e in l]
+            return (
+                [e for l in vals for e in l]
+                if len(vals) > 0
+                else self.default()
+            )
 
     return Inner
 
 
 ColoredLineField = ListParser(parse_colored_line)
+
+PatternField = ListParser(parse_str_line)
 
 
 def line_parser[T](
@@ -295,7 +318,7 @@ def fields_parser(
             fold(
                 parse_line,
                 fold_fn,
-                {name: [] for name in fields.keys()},
+                lambda: {name: [] for name in fields.keys()},
             ),
         )(s)
 
@@ -317,13 +340,17 @@ class Config:
     tilemap_cell_size: IVec2
     tilemap_full: list[ColoredLine]
     tilemap_empty: list[ColoredLine]
+    tilemap_background_size: IVec2
     tilemap_background: list[ColoredLine]
+    maze_pattern: list[str]
 
     def __init__(self) -> None:
         pass
 
     @staticmethod
     def parse(s: str) -> "Config":
+        from amazeing.maze_class import maze_pattern
+
         fields = parser_complete(
             fields_parser(
                 {
@@ -351,9 +378,15 @@ class Config:
                         ColoredLineField,
                         ['"{BLACK:BLACK}    "', '"{BLACK:BLACK}    "'],
                     ),
+                    "TILEMAP_BACKGROUND_SIZE": DefaultedField(
+                        CoordField, IVec2(4, 2)
+                    ),
                     "TILEMAP_BACKGROUND": DefaultedStrField(
                         ColoredLineField,
                         ['"{BLACK:BLACK}    "', '"{BLACK:BLACK}    "'],
+                    ),
+                    "MAZE_PATTERN": DefaultedField(
+                        PatternField, maze_pattern.Pattern.FT_PATTERN
                     ),
                 }
             )

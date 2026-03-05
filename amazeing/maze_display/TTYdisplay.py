@@ -1,4 +1,5 @@
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
+from sys import stderr
 from ..config.config_parser import Color, Config, ColoredLine, ColorPair
 from amazeing.maze_display.layout import (
     BInt,
@@ -7,6 +8,10 @@ from amazeing.maze_display.layout import (
     HBox,
     VBox,
     layout_fair,
+    layout_priority,
+    layout_sort_chunked,
+    layout_sort_shuffled,
+    layout_split,
     vpad_box,
     hpad_box,
 )
@@ -56,6 +61,7 @@ class Tile:
     ) -> None:
         if size.x <= 0 or size.y <= 0:
             return
+        print(src, dst, size, window.getmaxyx(), file=stderr)
         self.__pad.overwrite(
             window, *src.yx(), *dst.yx(), *(dst + size - IVec2.splat(1)).yx()
         )
@@ -87,7 +93,9 @@ class Tile:
             for y_size, y_offset in size_offset_iter(src.y, size.y, dims.y):
                 sub_size = IVec2(x_size, y_size)
                 offset = IVec2(x_offset, y_offset)
-                self.blit(src + offset, dst + offset, sub_size, window)
+                self.blit(
+                    (src + offset) % dims, dst + offset, sub_size, window
+                )
 
 
 class SubTile(Tile):
@@ -129,13 +137,23 @@ class MazeTileMap:
     def tile_size(self, pos: IVec2) -> IVec2:
         return (pos + 1) % 2 * self.__wall_dim + pos % 2 * self.__cell_dim
 
-    def draw_at(self, pos: IVec2, idx: int, window: curses.window) -> None:
+    def draw_at(self, at: IVec2, idx: int, window: curses.window) -> None:
         self.__tiles[idx].blit(
-            self.src_coord(pos),
-            self.dst_coord(pos),
-            self.tile_size(pos),
+            self.src_coord(at),
+            self.dst_coord(at),
+            self.tile_size(at),
             window,
         )
+
+    def draw_at_wrapping(
+        self,
+        start: IVec2,
+        at: IVec2,
+        into: IVec2,
+        idx: int,
+        window: curses.window,
+    ) -> None:
+        self.__tiles[idx].blit_wrapping(start, at, into, window)
 
 
 class ScrollablePad:
@@ -158,7 +176,7 @@ class ScrollablePad:
             IVec2.with_op(max)(self.__pos, dims - self.dims()), IVec2.splat(0)
         )
 
-    def refresh(self, at: IVec2, into: IVec2) -> None:
+    def present(self, at: IVec2, into: IVec2, window: curses.window) -> None:
         if self.constrained:
             self.clamp(into)
 
@@ -173,7 +191,8 @@ class ScrollablePad:
             return
         draw_start = at + win_start
         draw_end = draw_start + draw_dim - IVec2.splat(1)
-        self.pad.refresh(
+        self.pad.overwrite(
+            window,
             *pad_start.yx(),
             *draw_start.yx(),
             *draw_end.yx(),
@@ -256,17 +275,26 @@ class TileMaps:
     ) -> None:
         mazetile_dims = config.tilemap_wall_size + config.tilemap_cell_size
 
-        def new_tilemap(lines: list[ColoredLine]) -> Tile:
+        def new_tilemap(lines: list[ColoredLine], dim: IVec2) -> Tile:
             return Tile(
                 [
                     [(s, pair_map[color_pair]) for color_pair, s in line]
                     for line in lines
                 ],
-                mazetile_dims,
+                dim,
             )
 
-        self.empty: int = backend.add_style(new_tilemap(config.tilemap_empty))
-        self.full: int = backend.add_style(new_tilemap(config.tilemap_full))
+        self.empty: int = backend.add_style(
+            new_tilemap(config.tilemap_empty, mazetile_dims)
+        )
+        self.full: int = backend.add_style(
+            new_tilemap(config.tilemap_full, mazetile_dims)
+        )
+        self.filler: int = backend.add_style(
+            new_tilemap(
+                config.tilemap_background, config.tilemap_background_size
+            )
+        )
 
 
 class TTYBackend(Backend[int]):
@@ -286,23 +314,46 @@ class TTYBackend(Backend[int]):
         curses.curs_set(0)
         self.__screen.keypad(True)
 
+        self.__scratch: curses.window = curses.newpad(1, 1)
         self.__pad: ScrollablePad = ScrollablePad(dims)
         self.__dims = maze_dims
 
         maze_box = FBox(
             IVec2(BInt(dims.x), BInt(dims.y)),
-            self.__pad.refresh,
+            lambda at, into: self.__pad.present(at, into, self.__scratch),
         )
-        self.__layout: Box = VBox.noassoc(
-            layout_fair,
+        filler_box = FBox(
+            IVec2(BInt(0, True), BInt(0, True)),
+            lambda at, into: (
+                None
+                if self.__filler is None
+                else self.__tilemap.draw_at_wrapping(
+                    at, at, into, self.__filler, self.__scratch
+                )
+            ),
+        )
+        f: Callable[[int], int] = lambda e: e
+        layout = layout_split(
+            layout_fair, layout_sort_chunked(layout_fair, layout_priority, f)
+        )
+        self.__layout: Box = VBox(
+            layout,
             [
-                vpad_box(),
-                HBox.noassoc(layout_fair, [hpad_box(), maze_box, hpad_box()]),
-                vpad_box(),
+                (filler_box, 0),
+                (
+                    HBox(
+                        layout,
+                        [(filler_box, 0), (maze_box, 1), (filler_box, 0)],
+                    ),
+                    1,
+                ),
+                (filler_box, 0),
             ],
         )
 
         self.__resize: bool = False
+
+        self.__filler: None | int = None
 
     def __del__(self):
         curses.curs_set(1)
@@ -310,6 +361,9 @@ class TTYBackend(Backend[int]):
         self.__screen.keypad(False)
         curses.echo()
         curses.endwin()
+
+    def set_filler(self, style: int) -> None:
+        self.__filler = style
 
     def add_style(self, style: Tile) -> int:
         return self.__tilemap.add_tile(style)
@@ -329,7 +383,9 @@ class TTYBackend(Backend[int]):
             self.__screen.erase()
         self.__screen.refresh()
         y, x = self.__screen.getmaxyx()
+        self.__scratch.resize(y, x)
         self.__layout.laid_out(IVec2(0, 0), IVec2(x, y))
+        self.__scratch.overwrite(self.__screen)
 
     def event(self, timeout_ms: int = -1) -> BackendEvent | None:
         self.__screen.timeout(timeout_ms)

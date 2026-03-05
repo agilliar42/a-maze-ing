@@ -5,6 +5,9 @@ from typing import Type, cast
 
 
 class IVec2[T = int]:
+    def copy(self, inner_copy: Callable[[T], T] = lambda e: e) -> "IVec2[T]":
+        return IVec2(inner_copy(self.x), inner_copy(self.y))
+
     def __init__(self, x: T, y: T) -> None:
         self.x: T = x
         self.y: T = y
@@ -12,6 +15,9 @@ class IVec2[T = int]:
     @staticmethod
     def splat(n: T) -> "IVec2[T]":
         return IVec2(n, n)
+
+    def __repr__(self) -> str:
+        return f"{self.x, self.y}"
 
     @staticmethod
     def with_op(

@@ -94,14 +94,14 @@ def alt[T](*choices: Parser[T]) -> Parser[T]:
 def fold[T, R](
     p: Parser[T],
     f: Callable[[R, T], R],
-    acc: R,
+    acc_init: Callable[[], R],
     min_n: int = 0,
     max_n: int | None = None,
     sep: Parser[Any] = null_parser,
 ) -> Parser[R]:
     # no clean way to do this with lambdas i could figure out :<
     def inner(s: str) -> ParseResult[R]:
-        nonlocal acc
+        acc = acc_init()
         count: int = 0
         curr_p: Parser[T] = p
         while max_n is None or count < max_n:
@@ -125,7 +125,12 @@ def many[T](
     sep: Parser[Any] = null_parser,
 ) -> Parser[list[T]]:
     return fold(
-        parser_map(lambda e: [e], p), list.__add__, [], min_n, max_n, sep
+        parser_map(lambda e: [e], p),
+        list.__add__,
+        lambda: [],
+        min_n,
+        max_n,
+        sep,
     )
 
 
@@ -135,7 +140,7 @@ def many_count[T](
     max_n: int | None = None,
     sep: Parser[Any] = null_parser,
 ) -> Parser[int]:
-    return fold(value(1, p), int.__add__, 0, min_n, max_n, sep)
+    return fold(value(1, p), int.__add__, lambda: 0, min_n, max_n, sep)
 
 
 def seq[T](*parsers: Parser[T]) -> Parser[str]:

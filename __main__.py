@@ -26,7 +26,7 @@ maze = Maze(dims)
 
 maze.outline()
 
-pattern = Pattern(Pattern.FT_PATTERN).centered_for(dims)
+pattern = Pattern(config.maze_pattern).centered_for(dims)
 pattern.fill(maze)
 
 walls_const = set(maze.walls_full())
@@ -34,6 +34,7 @@ walls_const = set(maze.walls_full())
 backend = TTYBackend(dims, config.tilemap_wall_size, config.tilemap_cell_size)
 pair_map = extract_pairs(config)
 tilemaps = TileMaps(config, pair_map, backend)
+backend.set_filler(tilemaps.filler)
 
 backend.set_style(tilemaps.empty)
 for wall in maze.all_walls():
