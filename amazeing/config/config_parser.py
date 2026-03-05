@@ -337,8 +337,12 @@ class Config:
                     "SCREENSAVER": DefaultedField(BoolField, False),
                     "VISUAL": DefaultedField(BoolField, False),
                     "INTERACTIVE": DefaultedField(BoolField, False),
-                    "TILEMAP_WALL_SIZE": DefaultedField(CoordField, (2, 1)),
-                    "TILEMAP_CELL_SIZE": DefaultedField(CoordField, (2, 1)),
+                    "TILEMAP_WALL_SIZE": DefaultedField(
+                        CoordField, IVec2(2, 1)
+                    ),
+                    "TILEMAP_CELL_SIZE": DefaultedField(
+                        CoordField, IVec2(2, 1)
+                    ),
                     "TILEMAP_FULL": DefaultedStrField(
                         ColoredLineField,
                         ['"{WHITE:WHITE}    "', '"{WHITE:WHITE}    "'],

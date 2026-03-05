@@ -28,12 +28,24 @@ def pad_write_safe(
 
 
 class Tile:
-    def __init__(self, pixels: list[list[tuple[str, int]]]) -> None:
-        dims = IVec2(max(map(len, pixels), default=0), len(pixels))
+    def __init__(
+        self, pixels: list[list[tuple[str, int]]], dims: IVec2
+    ) -> None:
+        if (
+            len(pixels) > dims.y
+            or max(
+                map(lambda line: sum(map(lambda s: len(s[0]), line)), pixels)
+            )
+            > dims.x
+        ):
+            raise BackendException("Tile too big to fit in set dimensions")
         self.__pad: curses.window = curses.newpad(dims.y, dims.x)
         for y, line in enumerate(pixels):
-            for x, (char, attrs) in enumerate(line):
-                pad_write_safe(self.__pad, IVec2(x, y), char, attrs)
+            x = 0
+            for s, attrs in line:
+                for char in s:
+                    pad_write_safe(self.__pad, IVec2(x, y), char, attrs)
+                    x += 1
 
     def dims(self) -> IVec2:
         y, x = self.__pad.getmaxyx()
@@ -216,7 +228,7 @@ def extract_pairs(
         )
     for color, color_number in zip(value_colors, available_colors):
         curses.init_color(
-            color_number, *(min(0, max(1000, channel)) for channel in color)
+            color_number, *(max(0, min(1000, channel)) for channel in color)
         )
         res_colors[color] = color_number
     available_pairs = {i for i in range(1, curses.COLOR_PAIRS)}
@@ -227,12 +239,34 @@ def extract_pairs(
             + f"got: {len(pairs)}"
         )
     res_pairs = {}
-    for colors, pair_number in zip(pairs, available_pairs):
-        fg, bg = colors
+    for pair, pair_number in zip(pairs, available_pairs):
+        fg, bg = pair
         curses.init_pair(pair_number, res_colors[fg], res_colors[bg])
-        res_pairs[colors] = pair_number
+        res_pairs[pair] = curses.color_pair(pair_number)
 
     return res_pairs
+
+
+class TileMaps:
+    def __init__(
+        self,
+        config: Config,
+        pair_map: dict[ColorPair, int],
+        backend: "TTYBackend",
+    ) -> None:
+        mazetile_dims = config.tilemap_wall_size + config.tilemap_cell_size
+
+        def new_tilemap(lines: list[ColoredLine]) -> Tile:
+            return Tile(
+                [
+                    [(s, pair_map[color_pair]) for color_pair, s in line]
+                    for line in lines
+                ],
+                mazetile_dims,
+            )
+
+        self.empty: int = backend.add_style(new_tilemap(config.tilemap_empty))
+        self.full: int = backend.add_style(new_tilemap(config.tilemap_full))
 
 
 class TTYBackend(Backend[int]):

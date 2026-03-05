@@ -9,9 +9,10 @@ from amazeing import (
 )
 import random
 
+from sys import stderr
 from amazeing.config.config_parser import Config
 from amazeing.maze_class.maze_walls import Cardinal, CellCoord
-from amazeing.maze_display.TTYdisplay import Tile, extract_pairs
+from amazeing.maze_display.TTYdisplay import Tile, TileMaps, extract_pairs
 from amazeing.maze_display.backend import BackendEvent, CloseRequested, IVec2
 
 config = Config.parse(open("./example.conf").read())
@@ -30,33 +31,20 @@ pattern.fill(maze)
 
 walls_const = set(maze.walls_full())
 
-backend = TTYBackend(dims, IVec2(2, 1), IVec2(2, 1))
-curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLACK)
-black = curses.color_pair(1)
-empty = (" ", black)
-style_empty = backend.add_style(
-    Tile(
-        [
-            [empty, empty, empty, empty],
-            [empty, empty, empty, empty],
-        ]
-    )
-)
-curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_WHITE)
-white = curses.color_pair(2)
-full = (" ", white)
-style_full = backend.add_style(
-    Tile(
-        [
-            [full, full, full, full],
-            [full, full, full, full],
-        ]
-    )
-)
+backend = TTYBackend(dims, config.tilemap_wall_size, config.tilemap_cell_size)
+pair_map = extract_pairs(config)
+tilemaps = TileMaps(config, pair_map, backend)
+
+backend.set_style(tilemaps.empty)
+for wall in maze.all_walls():
+    for tile in wall.tile_coords():
+        backend.draw_tile(tile)
+for cell in CellCoord(*dims.xy()).all_up_to():
+    backend.draw_tile(cell.tile_coords())
 
 
 def clear_backend() -> None:
-    backend.set_style(style_empty)
+    backend.set_style(tilemaps.empty)
     for wall in maze.walls_dirty():
         if maze.get_wall(wall).is_full():
             continue
@@ -67,7 +55,7 @@ def clear_backend() -> None:
 
 def display_maze(maze: Maze) -> None:
     clear_backend()
-    backend.set_style(style_full)
+    backend.set_style(tilemaps.full)
 
     rewrites = {
         wall for wall in maze.walls_dirty() if maze.get_wall(wall).is_full()

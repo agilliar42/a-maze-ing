@@ -173,8 +173,8 @@ class CellCoord:
             case Cardinal.WEST:
                 return WallCoord(Orientation.VERTICAL, self.__x + 1, self.__y)
 
-    def pixel_coords(self) -> Iterable[IVec2]:
-        return [IVec2(self.__x * 2 + 1, self.__y * 2 + 1)]
+    def tile_coords(self) -> IVec2:
+        return IVec2(self.__x * 2 + 1, self.__y * 2 + 1)
 
     def offset(self, by: IVec2) -> "CellCoord":
         return CellCoord(self.__x + by.x, self.__y + by.y)
@@ -184,3 +184,8 @@ class CellCoord:
 
     def y(self) -> int:
         return self.__y
+
+    def all_up_to(self) -> Iterable["CellCoord"]:
+        for x in range(0, self.__x):
+            for y in range(0, self.__y):
+                yield CellCoord(x, y)

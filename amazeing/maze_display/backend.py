@@ -47,6 +47,11 @@ class IVec2[T = int]:
     def __mod__(self, other: "T | IVec2[T]") -> "IVec2[T]":
         return self.with_op(self.innertype().__mod__)(self, other)
 
+    def __eq__(self, value: object, /) -> bool:
+        if not isinstance(value, IVec2):
+            return False
+        return self.x == value.x and self.y == value.y
+
     def xy(self) -> tuple[T, T]:
         return (self.x, self.y)
 
