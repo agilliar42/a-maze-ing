@@ -14,6 +14,7 @@ from amazeing.config.config_parser import Config
 from amazeing.maze_class.maze_walls import Cardinal, CellCoord
 from amazeing.maze_display.TTYdisplay import Tile, TileMaps, extract_pairs
 from amazeing.maze_display.backend import BackendEvent, CloseRequested, IVec2
+from amazeing.maze_make_empty import maze_make_empty
 
 config = Config.parse(open("./example.conf").read())
 
@@ -72,7 +73,7 @@ def display_maze(maze: Maze) -> None:
             backend.draw_tile(pixel)
     maze.clear_dirty()
     backend.present()
-    poll_events(0)
+    poll_events(2)
 
 
 def poll_events(timeout_ms: int = -1) -> None:
@@ -95,6 +96,9 @@ maze_make_perfect(maze, callback=display_maze)
 maze_make_pacman(maze, walls_const, callback=display_maze)
 while True:
     maze_make_perfect(maze, callback=display_maze)
-    maze_make_pacman(maze, walls_const, callback=display_maze)
+    poll_events(200)
+    # maze_make_pacman(maze, walls_const, callback=display_maze)
+    maze_make_empty(maze, walls_const, callback=display_maze)
+    poll_events(200)
     maze._rebuild()
 poll_events()

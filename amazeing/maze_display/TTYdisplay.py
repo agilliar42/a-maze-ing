@@ -4,6 +4,7 @@ from ..config.config_parser import Color, Config, ColoredLine, ColorPair
 from amazeing.maze_display.layout import (
     BInt,
     Box,
+    DBox,
     FBox,
     HBox,
     VBox,
@@ -61,7 +62,6 @@ class Tile:
     ) -> None:
         if size.x <= 0 or size.y <= 0:
             return
-        print(src, dst, size, window.getmaxyx(), file=stderr)
         self.__pad.overwrite(
             window, *src.yx(), *dst.yx(), *(dst + size - IVec2.splat(1)).yx()
         )
@@ -322,16 +322,26 @@ class TTYBackend(Backend[int]):
             IVec2(BInt(dims.x), BInt(dims.y)),
             lambda at, into: self.__pad.present(at, into, self.__scratch),
         )
-        filler_box = FBox(
-            IVec2(BInt(0, True), BInt(0, True)),
-            lambda at, into: (
-                None
-                if self.__filler is None
-                else self.__tilemap.draw_at_wrapping(
-                    at, at, into, self.__filler, self.__scratch
+
+        self.__filler_boxes: list[DBox] = []
+
+        def filler_box() -> Box:
+            self.__filler_boxes.append(
+                res := DBox(
+                    FBox(
+                        IVec2(BInt(0, True), BInt(0, True)),
+                        lambda at, into: (
+                            None
+                            if self.__filler is None
+                            else self.__tilemap.draw_at_wrapping(
+                                at, at, into, self.__filler, self.__scratch
+                            )
+                        ),
+                    )
                 )
-            ),
-        )
+            )
+            return res
+
         f: Callable[[int], int] = lambda e: e
         layout = layout_split(
             layout_fair, layout_sort_chunked(layout_fair, layout_priority, f)
@@ -339,15 +349,15 @@ class TTYBackend(Backend[int]):
         self.__layout: Box = VBox(
             layout,
             [
-                (filler_box, 0),
+                (filler_box(), 0),
                 (
                     HBox(
                         layout,
-                        [(filler_box, 0), (maze_box, 1), (filler_box, 0)],
+                        [(filler_box(), 0), (maze_box, 1), (filler_box(), 0)],
                     ),
                     1,
                 ),
-                (filler_box, 0),
+                (filler_box(), 0),
             ],
         )
 
@@ -364,6 +374,8 @@ class TTYBackend(Backend[int]):
 
     def set_filler(self, style: int) -> None:
         self.__filler = style
+        for box in self.__filler_boxes:
+            box.mark_dirty()
 
     def add_style(self, style: Tile) -> int:
         return self.__tilemap.add_tile(style)
@@ -381,6 +393,8 @@ class TTYBackend(Backend[int]):
         if self.__resize:
             self.__resize = False
             self.__screen.erase()
+            for box in self.__filler_boxes:
+                box.mark_dirty()
         self.__screen.refresh()
         y, x = self.__screen.getmaxyx()
         self.__scratch.resize(y, x)

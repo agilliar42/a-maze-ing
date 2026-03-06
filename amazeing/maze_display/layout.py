@@ -226,7 +226,8 @@ class HBox[T](Box):
         heights = [(get_height(dim.y), assoc) for dim, assoc in dims]
 
         for (height, _), width, (box, _) in zip(heights, widths, self.boxes):
-            box.laid_out(at, IVec2(width, height))
+            # ditto error that i forgot to fix :>
+            box.laid_out(at.copy(), IVec2(width, height))
             at.x += width
 
 
@@ -245,6 +246,24 @@ class FBox(Box):
 
     def laid_out(self, at: IVec2, into: IVec2) -> None:
         self.__cb(at, into)
+
+
+class DBox(Box):
+    def __init__(self, inner: Box) -> None:
+        self.__inner: Box = inner
+        self.__prev: tuple[IVec2, IVec2] | None = None
+
+    def mark_dirty(self) -> None:
+        self.__prev = None
+
+    def dims(self) -> BVec2:
+        return self.__inner.dims()
+
+    def laid_out(self, at: IVec2, into: IVec2) -> None:
+        if self.__prev == (at, into):
+            return
+        self.__prev = (at, into)
+        self.__inner.laid_out(at, into)
 
 
 def vpad_box(min_pad: int = 0, cb=lambda _at, _into: None) -> FBox:
