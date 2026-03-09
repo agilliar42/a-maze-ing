@@ -27,9 +27,13 @@ maze = Maze(dims)
 
 maze.outline()
 
-pattern = Pattern(config.maze_pattern).centered_for(
-    dims, {CellCoord(5, 5), CellCoord(10, 10)}
-)
+excluded = set()
+if config.entry is not None:
+    excluded.add(config.entry)
+if config.exit is not None:
+    excluded.add(config.exit)
+
+pattern = Pattern(config.maze_pattern).centered_for(dims, excluded)
 pattern.fill(maze)
 
 walls_const = set(maze.walls_full())
@@ -54,7 +58,6 @@ def clear_backend() -> None:
             continue
         for tile in wall.tile_coords():
             backend.draw_tile(tile)
-            pass
 
 
 def display_maze(maze: Maze) -> None:
@@ -76,7 +79,6 @@ def display_maze(maze: Maze) -> None:
     maze.clear_dirty()
     backend.present()
     poll_events(0)
-    # poll_events(0)
 
 
 def poll_events(timeout_ms: int = -1) -> None:
@@ -97,6 +99,9 @@ def poll_events(timeout_ms: int = -1) -> None:
 
 maze_make_perfect(maze, callback=display_maze)
 maze_make_pacman(maze, walls_const, callback=display_maze)
+print(
+    maze.pathfind(CellCoord(config.entry), CellCoord(config.exit)), file=stderr
+)
 while False:
     maze_make_perfect(maze, callback=display_maze)
     # poll_events(200)

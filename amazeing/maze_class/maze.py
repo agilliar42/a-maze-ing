@@ -1,7 +1,10 @@
+from sys import stderr
 from typing import Callable, Generator, Iterable, cast
 
 from amazeing.maze_display.backend import IVec2
 from .maze_walls import (
+    Cardinal,
+    CellCoord,
     MazeWall,
     NetworkID,
     Orientation,
@@ -191,3 +194,43 @@ class Maze:
 
     def clear_dirty(self) -> None:
         self.__dirty = set()
+
+    def pathfind(
+        self, src: CellCoord, dst: CellCoord
+    ) -> list[Cardinal] | None:
+        class Path:
+            def __init__(self, prev: tuple["Path", Cardinal] | None) -> None:
+                self.prev: tuple["Path", Cardinal] | None = prev
+
+            def to_list(self) -> list[Cardinal]:
+                if self.prev is None:
+                    return []
+                prev, direction = self.prev
+                prev_list = prev.to_list()
+                prev_list.append(direction)
+                return prev_list
+
+            def __add__(self, value: Cardinal) -> "Path":
+                return Path((self, value))
+
+        walls_empty = set(self.walls_empty())
+        visited = set()
+        border = {src: Path(None)}
+        while len(border) != 0:
+            border_next = {}
+            for pos, path in border.items():
+                if pos == dst:
+                    return path.to_list()
+                visited.add(pos)
+                for direction in Cardinal.all():
+                    if pos.get_wall(direction) not in walls_empty:
+                        continue
+                    neighbour = pos.get_neighbour(direction)
+                    if neighbour in visited:
+                        continue
+                    if neighbour in border or neighbour in border_next:
+                        continue
+                    border_next[neighbour] = path + direction
+            border = border_next
+
+        return None

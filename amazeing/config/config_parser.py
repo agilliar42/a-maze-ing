@@ -44,6 +44,10 @@ def parse_comment(s: str) -> ParseResult[str]:
     return recognize(seq(tag("#"), many_count(none_of("\n"))))(s)
 
 
+def parse_empty_line(s: str) -> ParseResult[None]:
+    return (None, s) if s.startswith("\n") else None
+
+
 def spaced[T](parser: Parser[T]) -> Parser[T]:
     return delimited(multispace0, parser, multispace0)
 
@@ -291,6 +295,7 @@ def line_parser[T](
             )
             for name, field in fields.items()
         ),
+        parser_map(lambda _: None, parse_empty_line),
     )
 
 

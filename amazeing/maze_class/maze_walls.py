@@ -76,6 +76,10 @@ class Cardinal(Enum):
     def right(self) -> "Cardinal":
         return self.left().opposite()
 
+    @staticmethod
+    def all() -> list["Cardinal"]:
+        return [Cardinal.NORTH, Cardinal.SOUTH, Cardinal.EAST, Cardinal.WEST]
+
 
 class WallCoord:
     def __init__(self, orientation: Orientation, a: int, b: int) -> None:
@@ -161,10 +165,17 @@ class CellCoord(IVec2):
                 return WallCoord(Orientation.HORIZONTAL, self.y, self.x)
             case Cardinal.SOUTH:
                 return WallCoord(Orientation.HORIZONTAL, self.y + 1, self.x)
-            case Cardinal.EAST:
-                return WallCoord(Orientation.VERTICAL, self.x, self.y)
             case Cardinal.WEST:
+                return WallCoord(Orientation.VERTICAL, self.x, self.y)
+            case Cardinal.EAST:
                 return WallCoord(Orientation.VERTICAL, self.x + 1, self.y)
+
+    def get_neighbour(self, cardinal: Cardinal) -> "CellCoord":
+        return next(
+            filter(
+                lambda e: e != self, self.get_wall(cardinal).neighbour_cells()
+            )
+        )
 
     def tile_coords(self) -> IVec2:
         return IVec2(self.x * 2 + 1, self.y * 2 + 1)
@@ -178,6 +189,4 @@ class CellCoord(IVec2):
                 yield CellCoord(x, y)
 
     def neighbours_unchecked(self) -> Iterable["CellCoord"]:
-        return map(
-            self.offset, [IVec2(-1, 0), IVec2(1, 0), IVec2(0, -1), IVec2(0, 1)]
-        )
+        return map(self.get_neighbour, Cardinal.all())

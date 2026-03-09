@@ -88,7 +88,12 @@ class Pattern:
         normalized: Pattern = self.normalized()
         negative = normalized.flood_filled().mirrored()
         dims = normalized.dims()
-        slots = set(CellCoord(canvas - dims + 1).all_up_to())
+        slots = set(
+            map(
+                lambda e: CellCoord(e + 1),
+                CellCoord(canvas - dims - 1).all_up_to(),
+            )
+        )
         for excluded in excluding:
             slots -= negative.offset(excluded).__cells
         if len(slots) == 0:
