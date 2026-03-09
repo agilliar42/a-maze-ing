@@ -1,5 +1,4 @@
 from collections.abc import Callable, Generator, Iterable
-from sys import stderr
 from ..config.config_parser import Color, Config, ColoredLine, ColorPair
 from amazeing.maze_display.layout import (
     BInt,
@@ -11,10 +10,7 @@ from amazeing.maze_display.layout import (
     layout_fair,
     layout_priority,
     layout_sort_chunked,
-    layout_sort_shuffled,
     layout_split,
-    vpad_box,
-    hpad_box,
 )
 from .backend import Backend, IVec2, BackendEvent, KeyboardInput
 import curses
@@ -234,11 +230,11 @@ def extract_pairs(
     }
     available_colors = {i for i in range(0, curses.COLORS)}
     res_colors: dict[Color, int] = {}
-    for color in var_colors:
-        if color not in color_lookup:
-            raise BackendException("Unknown color " + color + " in config")
-        res_colors[color] = color_lookup[color]
-        available_colors -= {color_lookup[color]}
+    for var_color in var_colors:
+        if var_color not in color_lookup:
+            raise BackendException("Unknown color " + var_color + " in config")
+        res_colors[var_color] = color_lookup[var_color]
+        available_colors -= {color_lookup[var_color]}
     if len(available_colors) < len(value_colors):
         raise BackendException(
             "Too many value color values in config: "
@@ -421,3 +417,4 @@ class TTYBackend(Backend[int]):
             case _:
                 return KeyboardInput(key)
         self.present()
+        return None

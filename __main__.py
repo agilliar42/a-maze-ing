@@ -1,4 +1,3 @@
-import curses
 import time
 from amazeing import (
     Maze,
@@ -6,15 +5,14 @@ from amazeing import (
     Pattern,
     maze_make_pacman,
     maze_make_perfect,
+    maze_make_empty,
 )
 import random
 
-from sys import stderr
 from amazeing.config.config_parser import Config
-from amazeing.maze_class.maze_walls import Cardinal, CellCoord
-from amazeing.maze_display.TTYdisplay import Tile, TileMaps, extract_pairs
-from amazeing.maze_display.backend import BackendEvent, CloseRequested, IVec2
-from amazeing.maze_make_empty import maze_make_empty
+from amazeing.maze_class.maze_walls import CellCoord
+from amazeing.maze_display.TTYdisplay import TileMaps, extract_pairs
+from amazeing.maze_display.backend import CloseRequested, IVec2
 
 config = Config.parse(open("./example.conf").read())
 
@@ -29,9 +27,9 @@ maze.outline()
 
 excluded = set()
 if config.entry is not None:
-    excluded.add(config.entry)
+    excluded.add(CellCoord(config.entry))
 if config.exit is not None:
-    excluded.add(config.exit)
+    excluded.add(CellCoord(config.exit))
 
 pattern = Pattern(config.maze_pattern).centered_for(dims, excluded)
 pattern.fill(maze)
@@ -99,9 +97,8 @@ def poll_events(timeout_ms: int = -1) -> None:
 
 maze_make_perfect(maze, callback=display_maze)
 maze_make_pacman(maze, walls_const, callback=display_maze)
-print(
-    maze.pathfind(CellCoord(config.entry), CellCoord(config.exit)), file=stderr
-)
+if config.entry is not None and config.exit is not None:
+    path = maze.pathfind(CellCoord(config.entry), CellCoord(config.exit))
 while False:
     maze_make_perfect(maze, callback=display_maze)
     # poll_events(200)

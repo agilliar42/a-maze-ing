@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from sys import stderr
 from .backend import IVec2
 
 

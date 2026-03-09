@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Generator
-from typing import Any, Type
+from collections.abc import Callable
+from typing import Any, Type, cast
 
 from amazeing.maze_display.backend import IVec2
 from .parser_combinator import (
@@ -14,7 +14,6 @@ from .parser_combinator import (
     many,
     many_count,
     none_of,
-    null_parser,
     one_of,
     pair,
     parser_complete,
@@ -89,20 +88,26 @@ type ColoredLine = list[tuple[ColorPair, str]]
 
 
 def parse_color(s: str) -> ParseResult[Color]:
-    return alt(
-        parser_map(
-            lambda l: (l[0], l[1], l[2]),
-            many(parse_int, 3, 3, spaced(tag(","))),
-        ),
-        parse_varname,
-    )(s)
+    return cast(
+        ParseResult[Color],
+        alt(
+            parser_map(
+                tuple,
+                many(parse_int, 3, 3, spaced(tag(","))),
+            ),
+            parse_varname,
+        )(s),
+    )
 
 
 def parse_color_pair(s: str) -> ParseResult[ColorPair]:
-    return parser_map(
-        lambda l: (l[0], l[1]),
-        many(parse_color, 2, 2, spaced(tag(":"))),
-    )(s)
+    return cast(
+        ParseResult[ColorPair],
+        parser_map(
+            tuple,
+            many(parse_color, 2, 2, spaced(tag(":"))),
+        )(s),
+    )
 
 
 def parse_colored_line(
@@ -219,7 +224,7 @@ def OptionalField[T](cls: Type[ConfigField[T]]) -> Type[ConfigField[T | None]]:
 def DefaultedField[T](
     cls: Type[ConfigField[T]], default: T
 ) -> Type[ConfigField[T]]:
-    class Inner(cls):
+    class Inner(cls):  # type: ignore
         def __init__(
             self,
             name: str,
@@ -233,7 +238,7 @@ def DefaultedField[T](
 def DefaultedStrField[T](
     cls: Type[ConfigField[T]], default_strs: list[str]
 ) -> Type[ConfigField[T]]:
-    class Inner(cls):
+    class Inner(cls):  # type: ignore
         def __init__(
             self,
             name: str,
@@ -267,7 +272,7 @@ def ListParser[T](parser: Parser[T]) -> Type[ConfigField[list[T]]]:
 
         def merge(self, vals: list[list[T]]) -> list[T]:
             return (
-                [e for l in vals for e in l]
+                [e for val in vals for e in val]
                 if len(vals) > 0
                 else self.default()
             )

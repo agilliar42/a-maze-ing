@@ -15,10 +15,11 @@ class Pattern:
     ]
 
     def __init__(self, pat: list[str] | set[CellCoord]) -> None:
+        self.__cells: set[CellCoord]
         if isinstance(pat, set):
-            self.__cells: set[CellCoord] = pat
+            self.__cells = pat
             return
-        self.__cells: set[CellCoord] = {
+        self.__cells = {
             CellCoord(x, y)
             for y, line in enumerate(pat)
             for x, char in enumerate(line)
@@ -99,7 +100,9 @@ class Pattern:
         if len(slots) == 0:
             return Pattern([])
         ideal = (canvas - dims) // 2
-        slot = min(slots, key=lambda e: sum(((e := e - ideal) * e).xy()))
+        slot = min(
+            slots, key=lambda c: int.__add__(*((e := c - ideal) * e).xy())
+        )
 
         return normalized.offset(slot)
 

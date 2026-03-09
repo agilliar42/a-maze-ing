@@ -1,4 +1,3 @@
-from sys import stderr
 from typing import Callable, Generator, Iterable, cast
 
 from amazeing.maze_display.backend import IVec2
