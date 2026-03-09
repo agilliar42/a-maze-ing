@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Iterable, Optional, cast
+from typing import Iterable, Optional, cast, overload
 from ..maze_display import IVec2
 
 
@@ -136,23 +136,18 @@ class WallCoord:
         ]
 
 
-class CellCoord:
-    def __init__(self, x: int, y: int) -> None:
-        self.__x: int = x
-        self.__y: int = y
+class CellCoord(IVec2):
+    @overload
+    def __init__(self, val: IVec2, /) -> None: ...
 
-    def __members(self) -> tuple[int, int]:
-        return (self.__x, self.__y)
+    @overload
+    def __init__(self, x: int, y: int, /) -> None: ...
 
-    def __eq__(self, value: object, /) -> bool:
-        return (
-            self.__members() == cast(CellCoord, value).__members()
-            if type(self) is type(value)
-            else False
-        )
-
-    def __hash__(self) -> int:
-        return hash(self.__members())
+    def __init__(self, a: IVec2 | int, b: int = 0) -> None:
+        if isinstance(a, int):
+            super().__init__(a, b)
+        else:
+            super().__init__(a.x, a.y)
 
     def walls(self) -> Iterable[WallCoord]:
         return map(
@@ -163,29 +158,26 @@ class CellCoord:
     def get_wall(self, cardinal: Cardinal) -> WallCoord:
         match cardinal:
             case Cardinal.NORTH:
-                return WallCoord(Orientation.HORIZONTAL, self.__y, self.__x)
+                return WallCoord(Orientation.HORIZONTAL, self.y, self.x)
             case Cardinal.SOUTH:
-                return WallCoord(
-                    Orientation.HORIZONTAL, self.__y + 1, self.__x
-                )
+                return WallCoord(Orientation.HORIZONTAL, self.y + 1, self.x)
             case Cardinal.EAST:
-                return WallCoord(Orientation.VERTICAL, self.__x, self.__y)
+                return WallCoord(Orientation.VERTICAL, self.x, self.y)
             case Cardinal.WEST:
-                return WallCoord(Orientation.VERTICAL, self.__x + 1, self.__y)
+                return WallCoord(Orientation.VERTICAL, self.x + 1, self.y)
 
     def tile_coords(self) -> IVec2:
-        return IVec2(self.__x * 2 + 1, self.__y * 2 + 1)
+        return IVec2(self.x * 2 + 1, self.y * 2 + 1)
 
     def offset(self, by: IVec2) -> "CellCoord":
-        return CellCoord(self.__x + by.x, self.__y + by.y)
-
-    def x(self) -> int:
-        return self.__x
-
-    def y(self) -> int:
-        return self.__y
+        return CellCoord(self + by)
 
     def all_up_to(self) -> Iterable["CellCoord"]:
-        for x in range(0, self.__x):
-            for y in range(0, self.__y):
+        for x in range(0, self.x):
+            for y in range(0, self.y):
                 yield CellCoord(x, y)
+
+    def neighbours_unchecked(self) -> Iterable["CellCoord"]:
+        return map(
+            self.offset, [IVec2(-1, 0), IVec2(1, 0), IVec2(0, -1), IVec2(0, 1)]
+        )

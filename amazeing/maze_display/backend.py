@@ -20,15 +20,15 @@ class IVec2[T = int]:
         return f"{self.x, self.y}"
 
     @staticmethod
-    def with_op(
-        op: Callable[[T, T], T],
-    ) -> Callable[["IVec2[T]", "T | IVec2[T]"], "IVec2[T]"]:
+    def with_op[T2](
+        op: Callable[[T, T], T2],
+    ) -> Callable[["IVec2[T]", "T | IVec2[T]"], "IVec2[T2]"]:
         return lambda self, other: IVec2(
             op(
                 self.x,
                 (
                     other
-                    if isinstance(other, type(self))
+                    if isinstance(other, IVec2)
                     else (other := type(self).splat(cast(T, other)))
                 ).x,
             ),
@@ -57,6 +57,9 @@ class IVec2[T = int]:
         if not isinstance(value, IVec2):
             return False
         return self.x == value.x and self.y == value.y
+
+    def __hash__(self) -> int:
+        return hash((self.x, self.y))
 
     def xy(self) -> tuple[T, T]:
         return (self.x, self.y)

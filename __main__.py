@@ -27,7 +27,9 @@ maze = Maze(dims)
 
 maze.outline()
 
-pattern = Pattern(config.maze_pattern).centered_for(dims)
+pattern = Pattern(config.maze_pattern).centered_for(
+    dims, {CellCoord(5, 5), CellCoord(10, 10)}
+)
 pattern.fill(maze)
 
 walls_const = set(maze.walls_full())
@@ -41,7 +43,7 @@ backend.set_style(tilemaps.empty)
 for wall in maze.all_walls():
     for tile in wall.tile_coords():
         backend.draw_tile(tile)
-for cell in CellCoord(*dims.xy()).all_up_to():
+for cell in CellCoord(dims).all_up_to():
     backend.draw_tile(cell.tile_coords())
 
 
@@ -73,7 +75,8 @@ def display_maze(maze: Maze) -> None:
             backend.draw_tile(pixel)
     maze.clear_dirty()
     backend.present()
-    poll_events(2)
+    poll_events(0)
+    # poll_events(0)
 
 
 def poll_events(timeout_ms: int = -1) -> None:
@@ -94,11 +97,11 @@ def poll_events(timeout_ms: int = -1) -> None:
 
 maze_make_perfect(maze, callback=display_maze)
 maze_make_pacman(maze, walls_const, callback=display_maze)
-while True:
+while False:
     maze_make_perfect(maze, callback=display_maze)
-    poll_events(200)
-    # maze_make_pacman(maze, walls_const, callback=display_maze)
-    maze_make_empty(maze, walls_const, callback=display_maze)
-    poll_events(200)
+    # poll_events(200)
+    maze_make_pacman(maze, walls_const, callback=display_maze)
+    # maze_make_empty(maze, walls_const, callback=display_maze)
+    # poll_events(200)
     maze._rebuild()
 poll_events()
