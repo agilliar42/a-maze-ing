@@ -209,6 +209,7 @@ def extract_pairs(
         for tilemaps in (
             config.tilemap_empty,
             config.tilemap_full,
+            config.tilemap_path,
             config.tilemap_background,
         )
         for e in tilemaps
@@ -289,6 +290,7 @@ class TileMaps:
 
         self.empty: list[int] = list(map(add_style, config.tilemap_empty))
         self.full: list[int] = list(map(add_style, config.tilemap_full))
+        self.path: list[int] = list(map(add_style, config.tilemap_path))
         self.filler: list[int] = list(
             map(
                 lambda e: add_style(e, config.tilemap_background_size),
@@ -297,19 +299,23 @@ class TileMaps:
         )
 
 
-class TileCycle:
-    def __init__[T](
-        self, styles: list[T], cb: Callable[[T], None], i=0
-    ) -> None:
+class TileCycle[T]:
+    def __init__(self, styles: list[T], cb: Callable[[T], None], i=0) -> None:
+        if len(styles) == 0:
+            raise BackendException("No styles provided in tilecycle")
         self.__styles = styles
         self.__cb = cb
         self.__i = i
         cb(styles[i])
 
     def cycle(self, by: int = 1):
-        self.__i += by
-        self.__i %= len(self.__styles)
-        self.__cb(self.__styles[self.__i])
+        new = (self.__i + by) % len(self.__styles)
+        if new != self.__i:
+            self.__cb(self.__styles[new])
+        self.__i = new
+
+    def curr_style(self) -> T:
+        return self.__styles[self.__i]
 
 
 class TTYBackend(Backend[int]):
@@ -380,6 +386,9 @@ class TTYBackend(Backend[int]):
 
         self.__filler: None | int = None
 
+        self.__style_mapping: dict[int, set[IVec2]] = {}
+        self.__style_revmapping: dict[IVec2, int] = {}
+
     def __del__(self):
         curses.curs_set(1)
         curses.nocbreak()
@@ -394,6 +403,29 @@ class TTYBackend(Backend[int]):
         for box in self.__filler_boxes:
             box.mark_dirty()
 
+    def get_styled(self, style: int) -> Iterable[IVec2]:
+        return set(
+            self.__style_mapping[style]
+            if style in self.__style_mapping
+            else []
+        )
+
+    def map_style_cb(self) -> Callable[[int], None]:
+        curr: int | None = None
+
+        def inner(new: int) -> None:
+            nonlocal curr
+            if curr == None:
+                curr = new
+            if curr == new:
+                return
+            self.set_style(new)
+            for tile in self.get_styled(curr):
+                self.draw_tile(tile)
+            curr = new
+
+        return inner
+
     def add_style(self, style: Tile) -> int:
         return self.__tilemap.add_tile(style)
 
@@ -401,7 +433,18 @@ class TTYBackend(Backend[int]):
         return self.__dims
 
     def draw_tile(self, pos: IVec2) -> None:
-        self.__tilemap.draw_at(pos, self.__style, self.__pad.pad)
+        style = self.__style
+        mapping = self.__style_mapping
+        revmapping = self.__style_revmapping
+
+        if pos in revmapping:
+            mapping[revmapping[pos]].remove(pos)
+        revmapping[pos] = style
+        if style not in mapping:
+            mapping[style] = set()
+        mapping[style].add(pos)
+
+        self.__tilemap.draw_at(pos, style, self.__pad.pad)
 
     def set_style(self, style: int) -> None:
         self.__style = style

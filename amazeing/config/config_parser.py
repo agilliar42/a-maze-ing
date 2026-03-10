@@ -380,6 +380,7 @@ class Config:
     tilemap_cell_size: IVec2
     tilemap_full: list[list[ColoredLine]]
     tilemap_empty: list[list[ColoredLine]]
+    tilemap_path: list[list[ColoredLine]]
     tilemap_background_size: IVec2
     tilemap_background: list[list[ColoredLine]]
     maze_pattern: list[str]
@@ -417,6 +418,10 @@ class Config:
                     "TILEMAP_EMPTY": DefaultedStrField(
                         ColoredLineField,
                         ['"{BLACK:BLACK}    "', '"{BLACK:BLACK}    "'],
+                    ),
+                    "TILEMAP_PATH": DefaultedStrField(
+                        ColoredLineField,
+                        ['"{BLUE:BLUE}    "', '"{BLUE:BLUE}    "'],
                     ),
                     "TILEMAP_BACKGROUND_SIZE": DefaultedField(
                         CoordField, IVec2(4, 2)

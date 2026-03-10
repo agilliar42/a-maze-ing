@@ -80,6 +80,16 @@ class Cardinal(Enum):
     def all() -> list["Cardinal"]:
         return [Cardinal.NORTH, Cardinal.SOUTH, Cardinal.EAST, Cardinal.WEST]
 
+    @staticmethod
+    def path_to_tiles(path: list["Cardinal"], src: "CellCoord") -> list[IVec2]:
+        res = [src.tile_coords()]
+        for card in path:
+            nxt = src.get_neighbour(card)
+            res.append((src.tile_coords() + nxt.tile_coords()) // 2)
+            res.append(nxt.tile_coords())
+            src = nxt
+        return res
+
 
 class WallCoord:
     def __init__(self, orientation: Orientation, a: int, b: int) -> None:
@@ -154,10 +164,7 @@ class CellCoord(IVec2):
             super().__init__(a.x, a.y)
 
     def walls(self) -> Iterable[WallCoord]:
-        return map(
-            self.get_wall,
-            [Cardinal.NORTH, Cardinal.SOUTH, Cardinal.EAST, Cardinal.WEST],
-        )
+        return map(self.get_wall, Cardinal.all())
 
     def get_wall(self, cardinal: Cardinal) -> WallCoord:
         match cardinal:
