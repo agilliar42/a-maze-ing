@@ -204,11 +204,15 @@ class ScrollablePad:
 def extract_pairs(
     config: Config, extra_colors: Iterable[ColorPair] = []
 ) -> dict[ColorPair, int]:
-    all_tilemaps = (
-        config.tilemap_empty,
-        config.tilemap_full,
-        config.tilemap_background,
-    )
+    all_tilemaps = [
+        e
+        for tilemaps in (
+            config.tilemap_empty,
+            config.tilemap_full,
+            config.tilemap_background,
+        )
+        for e in tilemaps
+    ]
     pairs = {
         pair
         for tilemap in all_tilemaps
@@ -280,17 +284,32 @@ class TileMaps:
                 dim,
             )
 
-        self.empty: int = backend.add_style(
-            new_tilemap(config.tilemap_empty, mazetile_dims)
-        )
-        self.full: int = backend.add_style(
-            new_tilemap(config.tilemap_full, mazetile_dims)
-        )
-        self.filler: int = backend.add_style(
-            new_tilemap(
-                config.tilemap_background, config.tilemap_background_size
+        def add_style(tilemap, size=mazetile_dims):
+            return backend.add_style(new_tilemap(tilemap, size))
+
+        self.empty: list[int] = list(map(add_style, config.tilemap_empty))
+        self.full: list[int] = list(map(add_style, config.tilemap_full))
+        self.filler: list[int] = list(
+            map(
+                lambda e: add_style(e, config.tilemap_background_size),
+                config.tilemap_background,
             )
         )
+
+
+class TileCycle:
+    def __init__[T](
+        self, styles: list[T], cb: Callable[[T], None], i=0
+    ) -> None:
+        self.__styles = styles
+        self.__cb = cb
+        self.__i = i
+        cb(styles[i])
+
+    def cycle(self, by: int = 1):
+        self.__i += by
+        self.__i %= len(self.__styles)
+        self.__cb(self.__styles[self.__i])
 
 
 class TTYBackend(Backend[int]):
@@ -369,6 +388,8 @@ class TTYBackend(Backend[int]):
         curses.endwin()
 
     def set_filler(self, style: int) -> None:
+        if self.__filler == style:
+            return
         self.__filler = style
         for box in self.__filler_boxes:
             box.mark_dirty()

@@ -14,6 +14,7 @@ from .parser_combinator import (
     many,
     many_count,
     none_of,
+    null_parser,
     one_of,
     pair,
     parser_complete,
@@ -85,6 +86,7 @@ type Color = tuple[int, int, int] | str
 type ColorPair = tuple[Color, Color]
 
 type ColoredLine = list[tuple[ColorPair, str]]
+type Grouped[T] = tuple[int, T]
 
 
 def parse_color(s: str) -> ParseResult[Color]:
@@ -159,28 +161,38 @@ def parse_str_line(s: str) -> ParseResult[str]:
     )(s)
 
 
+def grouped_parser[T](parser: Parser[T]) -> Parser[Grouped[T]]:
+    return pair(alt(spaced(parse_int), value(0, null_parser)), parser)
+
+
 class ConfigException(Exception):
     pass
 
 
-class ConfigField[T](ABC):
+class ConfigField[T, U = T](ABC):
     def __init__(
-        self, name: str, default: Callable[[], T] | None = None
+        self,
+        name: str,
     ) -> None:
         self.__name = name
-        self.__default = default
 
     @abstractmethod
     def parse(self, s: str) -> ParseResult[T]: ...
 
-    def default(self) -> T:
-        if self.__default is None:
-            raise ConfigException(
-                f"Value {self.__name} not provided, "
-                + "and no default value exists"
-            )
-        return self.__default()
+    def default(self) -> U:
+        raise ConfigException(
+            f"Value {self.__name} not provided, "
+            + "and no default value exists"
+        )
 
+    @abstractmethod
+    def merge(self, vals: list[T]) -> U: ...
+
+    def name(self) -> str:
+        return self.__name
+
+
+class SimpleField[T](ConfigField[T, T]):
     def merge(self, vals: list[T]) -> T:
         if len(vals) == 0:
             return self.default()
@@ -190,63 +202,48 @@ class ConfigField[T](ABC):
             f"More than one definition of config field {self.__name}"
         )
 
-    def name(self) -> str:
-        return self.__name
 
-
-class IntField(ConfigField[int]):
+class IntField(SimpleField[int]):
     def parse(self, s: str) -> ParseResult[int]:
         return parse_int(s)
 
 
-class BoolField(ConfigField[bool]):
+class BoolField(SimpleField[bool]):
     def parse(self, s: str) -> ParseResult[bool]:
         return parse_bool(s)
 
 
-class CoordField(ConfigField[IVec2]):
+class CoordField(SimpleField[IVec2]):
     def parse(self, s: str) -> ParseResult[IVec2]:
         return parse_coord(s)
 
 
-class PathField(ConfigField[str]):
+class PathField(SimpleField[str]):
     def parse(self, s: str) -> ParseResult[str]:
         return parse_path(s)
 
 
-def OptionalField[T](cls: Type[ConfigField[T]]) -> Type[ConfigField[T | None]]:
-    class Inner(ConfigField[T | None]):
-        parse = cls.parse
+def OptionalField[T, U](
+    cls: Type[ConfigField[T, U]],
+) -> Type[ConfigField[T, U | None]]:
+    return DefaultedField(cls, None)
 
-    return DefaultedField(Inner, None)
 
-
-def DefaultedField[T](
-    cls: Type[ConfigField[T]], default: T
-) -> Type[ConfigField[T]]:
+def DefaultedField[T, U](
+    cls: Type[ConfigField[T, U]], default: U
+) -> Type[ConfigField[T, U]]:
     class Inner(cls):  # type: ignore
-        def __init__(
-            self,
-            name: str,
-            default: Callable[[], T] = lambda: default,
-        ) -> None:
-            super().__init__(name, default)
+        def default(self) -> U:
+            return default
 
     return Inner
 
 
-def DefaultedStrField[T](
-    cls: Type[ConfigField[T]], default_strs: list[str]
-) -> Type[ConfigField[T]]:
+def DefaultedStrField[T, U](
+    cls: Type[ConfigField[T, U]], default_strs: list[str]
+) -> Type[ConfigField[T, U]]:
     class Inner(cls):  # type: ignore
-        def __init__(
-            self,
-            name: str,
-            default: Callable[[], T] | None = None,
-        ) -> None:
-            super().__init__(name, default)
-
-        def default(self) -> T:
+        def default(self) -> U:
             acc = []
             for s in default_strs:
                 res = self.parse(s)
@@ -260,15 +257,36 @@ def DefaultedStrField[T](
     return Inner
 
 
+def MappedField[T, U, V](
+    cls: Type[ConfigField[T, U]], mapping: Callable[[U], V]
+) -> Type[ConfigField[T, V]]:
+    class Inner(ConfigField[T, V]):  # type: ignore
+        def __init__(self, name: str) -> None:
+            self.__inner = cls(name)
+            super().__init__(name)
+
+        def parse(self, s: str) -> ParseResult[T]:
+            return self.__inner.parse(s)
+
+        def default(self) -> V:
+            return mapping(self.__inner.default())
+
+        def merge(self, vals: list[T]) -> V:
+            return mapping(self.__inner.merge(vals))
+
+    return Inner
+
+
 def ListParser[T](parser: Parser[T]) -> Type[ConfigField[list[T]]]:
     class Inner(ConfigField[list[T]]):
-        def __init__(
-            self, name: str, default: Callable[[], list[T]] | None = lambda: []
-        ) -> None:
-            super().__init__(name, default)
+        def __init__(self, name: str) -> None:
+            super().__init__(name)
 
         def parse(self, s: str) -> ParseResult[list[T]]:
             return parser_map(lambda e: [e], parser)(s)
+
+        def default(self) -> list[T]:
+            return []
 
         def merge(self, vals: list[list[T]]) -> list[T]:
             return (
@@ -280,7 +298,18 @@ def ListParser[T](parser: Parser[T]) -> Type[ConfigField[list[T]]]:
     return Inner
 
 
-ColoredLineField = ListParser(parse_colored_line)
+def map_grouped[T](vals: list[Grouped[T]]) -> list[list[T]]:
+    res: dict[int, list[T]] = {}
+    for group, elem in vals:
+        if group not in res:
+            res[group] = []
+        res[group].append(elem)
+    return list(res.values())
+
+
+ColoredLineField = MappedField(
+    ListParser(grouped_parser(parse_colored_line)), map_grouped
+)
 
 PatternField = ListParser(parse_str_line)
 
@@ -349,10 +378,10 @@ class Config:
     interactive: bool
     tilemap_wall_size: IVec2
     tilemap_cell_size: IVec2
-    tilemap_full: list[ColoredLine]
-    tilemap_empty: list[ColoredLine]
+    tilemap_full: list[list[ColoredLine]]
+    tilemap_empty: list[list[ColoredLine]]
     tilemap_background_size: IVec2
-    tilemap_background: list[ColoredLine]
+    tilemap_background: list[list[ColoredLine]]
     maze_pattern: list[str]
 
     def __init__(self) -> None:

@@ -11,7 +11,7 @@ import random
 
 from amazeing.config.config_parser import Config
 from amazeing.maze_class.maze_walls import CellCoord
-from amazeing.maze_display.TTYdisplay import TileMaps, extract_pairs
+from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
 from amazeing.maze_display.backend import CloseRequested, IVec2
 
 config = Config.parse(open("./example.conf").read())
@@ -39,9 +39,9 @@ walls_const = set(maze.walls_full())
 backend = TTYBackend(dims, config.tilemap_wall_size, config.tilemap_cell_size)
 pair_map = extract_pairs(config)
 tilemaps = TileMaps(config, pair_map, backend)
-backend.set_filler(tilemaps.filler)
+filler = TileCycle(tilemaps.filler, backend.set_filler)
 
-backend.set_style(tilemaps.empty)
+backend.set_style(tilemaps.empty[0])
 for wall in maze.all_walls():
     for tile in wall.tile_coords():
         backend.draw_tile(tile)
@@ -50,7 +50,7 @@ for cell in CellCoord(dims).all_up_to():
 
 
 def clear_backend() -> None:
-    backend.set_style(tilemaps.empty)
+    backend.set_style(tilemaps.empty[0])
     for wall in maze.walls_dirty():
         if maze.get_wall(wall).is_full():
             continue
@@ -60,7 +60,7 @@ def clear_backend() -> None:
 
 def display_maze(maze: Maze) -> None:
     clear_backend()
-    backend.set_style(tilemaps.full)
+    backend.set_style(tilemaps.full[0])
 
     rewrites = {
         wall for wall in maze.walls_dirty() if maze.get_wall(wall).is_full()
@@ -93,6 +93,11 @@ def poll_events(timeout_ms: int = -1) -> None:
             return
         if isinstance(event, CloseRequested) or event.sym == "q":
             exit(0)
+        if event.sym == "c":
+            filler.cycle()
+        else:
+            continue
+        backend.present()
 
 
 maze_make_perfect(maze, callback=display_maze)
