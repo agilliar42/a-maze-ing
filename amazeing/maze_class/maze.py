@@ -143,7 +143,7 @@ class Maze:
     def walls_full(self) -> Iterable[WallCoord]:
         return filter(lambda w: self.get_wall(w).is_full(), self.all_walls())
 
-    def walls_dirty(self) -> Iterable[WallCoord]:
+    def walls_dirty(self) -> set[WallCoord]:
         return self.__dirty
 
     def walls_empty(self) -> Iterable[WallCoord]:

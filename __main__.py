@@ -109,27 +109,67 @@ def poll_events(timeout_ms: int = -1) -> None:
         backend.present()
 
 
-prev_path: list[IVec2] = []
+prev_solution: list[Cardinal] = []
+
+
+def manhattan_distance(a: IVec2, b: IVec2) -> int:
+    return sum(map(abs, (a - b).xy()))
+
+
+def elipse_manhattan(a: IVec2, b: IVec2, a2: IVec2, b2: IVec2) -> int:
+    return min(
+        manhattan_distance(a1, a2) + manhattan_distance(b1, b2)
+        for a1, b1 in ((a, b), (b, a))
+    )
+
+
+def pathfind_necessary() -> bool:
+    entry = config.entry
+    exit = config.exit
+    if entry is None or exit is None:
+        return False
+    if len(prev_solution) == 0:
+        return True
+    if any(
+        map(
+            lambda e: e in maze.walls_dirty() and maze.get_wall(e).is_full(),
+            Cardinal.path_to_walls(prev_solution, CellCoord(entry)),
+        )
+    ):
+        return True
+    if any(
+        map(
+            lambda e: elipse_manhattan(entry, exit, *e.neighbour_cells())
+            < len(prev_solution),
+            filter(
+                lambda wall: not maze.get_wall(wall).is_full(),
+                maze.walls_dirty(),
+            ),
+        )
+    ):
+        return True
+    return False
 
 
 def pathfind() -> None:
+    if not pathfind_necessary():
+        return
     if config.entry is None or config.exit is None:
         return
     solution = maze.pathfind(CellCoord(config.entry), CellCoord(config.exit))
-    if solution is None:
+    if solution is None or prev_solution == solution:
         return
+    prev_tiles = Cardinal.path_to_tiles(prev_solution, CellCoord(config.entry))
     tiles = Cardinal.path_to_tiles(solution, CellCoord(config.entry))
-    if prev_path == tiles:
-        return
     backend.set_style(empty.curr_style())
-    for tile in prev_path:
+    for tile in prev_tiles:
         backend.draw_tile(tile)
-    prev_path.clear()
-    prev_path.extend(tiles)
     backend.set_style(path.curr_style())
     for tile in tiles:
         backend.draw_tile(tile)
     backend.present()
+    prev_solution.clear()
+    prev_solution.extend(solution)
 
 
 maze_make_perfect(maze, callback=display_maze)

@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from enum import Enum, auto
 from typing import Iterable, Optional, cast, overload
 from ..maze_display import IVec2
@@ -89,6 +90,25 @@ class Cardinal(Enum):
             res.append(nxt.tile_coords())
             src = nxt
         return res
+
+    @staticmethod
+    def path_to_cells(
+        path: list["Cardinal"], src: "CellCoord"
+    ) -> list["CellCoord"]:
+        res = [src]
+        for card in path:
+            src = src.get_neighbour(card)
+            res.append(src)
+        return res
+
+    @staticmethod
+    def path_to_walls(
+        path: list["Cardinal"], src: "CellCoord"
+    ) -> list["WallCoord"]:
+        return [
+            cell.get_wall(card)
+            for cell, card in zip(Cardinal.path_to_cells(path, src), path)
+        ]
 
 
 class WallCoord:
