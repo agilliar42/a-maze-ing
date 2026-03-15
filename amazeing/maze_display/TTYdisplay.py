@@ -1,5 +1,6 @@
 from collections.abc import Callable, Generator, Iterable
-from ..config.config_parser import Color, Config, ColoredLine, ColorPair
+from amazeing.utils import BiMap
+from amazeing.config.config_parser import Color, Config, ColoredLine, ColorPair
 from amazeing.maze_display.layout import (
     BInt,
     Box,
@@ -386,8 +387,7 @@ class TTYBackend(Backend[int]):
 
         self.__filler: None | int = None
 
-        self.__style_mapping: dict[int, set[IVec2]] = {}
-        self.__style_revmapping: dict[IVec2, int] = {}
+        self.__style_bimap: BiMap[int, IVec2] = BiMap()
 
     def __del__(self):
         curses.curs_set(1)
@@ -404,11 +404,7 @@ class TTYBackend(Backend[int]):
             box.mark_dirty()
 
     def get_styled(self, style: int) -> Iterable[IVec2]:
-        return set(
-            self.__style_mapping[style]
-            if style in self.__style_mapping
-            else []
-        )
+        return self.__style_bimap.get(style)
 
     def map_style_cb(self) -> Callable[[int], None]:
         curr: int | None = None
@@ -434,16 +430,7 @@ class TTYBackend(Backend[int]):
 
     def draw_tile(self, pos: IVec2) -> None:
         style = self.__style
-        mapping = self.__style_mapping
-        revmapping = self.__style_revmapping
-
-        if pos in revmapping:
-            mapping[revmapping[pos]].remove(pos)
-        revmapping[pos] = style
-        if style not in mapping:
-            mapping[style] = set()
-        mapping[style].add(pos)
-
+        self.__style_bimap.add(style, pos)
         self.__tilemap.draw_at(pos, style, self.__pad.pad)
 
     def set_style(self, style: int) -> None:

@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from amazeing.maze_class.maze import Maze
-from amazeing.maze_class.maze_walls import WallCoord
+from amazeing.maze_class.maze_coords import WallCoord
 import random
 
 
@@ -12,5 +12,5 @@ def maze_make_empty(
     walls = [wall for wall in maze.walls_full() if wall not in walls_const]
     random.shuffle(walls)
     for wall in walls:
-        maze._remove_wall(wall)
+        maze.set_wall(wall)
         callback(maze)

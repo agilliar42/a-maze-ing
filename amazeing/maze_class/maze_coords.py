@@ -1,39 +1,6 @@
-from collections.abc import Generator
 from enum import Enum, auto
-from typing import Iterable, Optional, cast, overload
+from typing import Iterable, cast, overload
 from ..maze_display import IVec2
-
-
-class NetworkID:
-    __uuid_gen: int = 0
-
-    def __init__(self) -> None:
-        self.uuid: int = NetworkID.__uuid_gen
-        NetworkID.__uuid_gen += 1
-
-
-class WallNetwork:
-    def __init__(self) -> None:
-        from .maze_walls import WallCoord
-
-        self.walls: set[WallCoord] = set()
-
-    def size(self) -> int:
-        return len(self.walls)
-
-    def add_wall(self, id: "WallCoord") -> None:
-        self.walls.add(id)
-
-    def remove_wall(self, id: "WallCoord") -> None:
-        self.walls.remove(id)
-
-
-class MazeWall:
-    def __init__(self, network_id: Optional[NetworkID] = None) -> None:
-        self.network_id: Optional[NetworkID] = network_id
-
-    def is_full(self) -> bool:
-        return self.network_id is not None
 
 
 class Orientation(Enum):

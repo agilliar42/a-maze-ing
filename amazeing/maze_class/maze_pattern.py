@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 from amazeing.maze_display.backend import IVec2
 from .maze import Maze
-from .maze_walls import CellCoord
+from .maze_coords import CellCoord
 from typing import Callable
 
 
@@ -109,4 +109,4 @@ class Pattern:
     def fill(self, maze: "Maze") -> None:
         for cell in self.__cells:
             for wall in cell.walls():
-                maze.fill_wall(wall)
+                maze.set_wall(wall, True)

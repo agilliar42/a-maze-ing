@@ -18,9 +18,9 @@ def maze_make_pacman(
             if not maze.wall_cuts_cycle(wall):
                 continue
             if len(leaf_neighbours) == 0:
-                maze._remove_wall(wall)
+                maze.set_wall(wall)
             else:
-                maze._remove_wall(wall)
+                maze.set_wall(wall)
                 maze.fill_wall(random.choice(leaf_neighbours))
             n += 1
             callback(maze)

@@ -9,10 +9,35 @@ from amazeing import (
 )
 import random
 
+
 from amazeing.config.config_parser import Config
-from amazeing.maze_class.maze_walls import Cardinal, CellCoord
+from amazeing.maze_class.maze_coords import Cardinal, CellCoord
 from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
 from amazeing.maze_display.backend import CloseRequested, IVec2
+from amazeing.utils import AVLTree
+
+tree = AVLTree()
+
+keys = {i: tree.append(i) for i in range(25)}
+
+for i in range(1, 5):
+    keys[i].remove()
+for i in range(5, 15, 2):
+    keys[i].remove()
+
+tree2 = AVLTree()
+
+keys2 = {i: tree2.append(i) for i in range(25)}
+
+for i in range(1, 10, 3):
+    keys2[i].remove()
+
+tree.join(tree2)
+
+print(tree)
+
+
+exit(0)
 
 config = Config.parse(open("./example.conf").read())
 
@@ -74,7 +99,7 @@ def display_maze(maze: Maze) -> None:
         e
         for wall in maze.walls_dirty()
         for e in wall.neighbours()
-        if maze._check_coord(e) and maze.get_wall(e).is_full()
+        if maze.check_coord(e) and maze.get_wall(e).is_full()
     }
 
     for wall in rewrites:
@@ -179,7 +204,7 @@ maze_make_pacman(maze, walls_const, callback=display_maze)
 pathfind()
 
 
-while False:
+while True:
     maze_make_perfect(maze, callback=display_maze)
     # poll_events(200)
     maze_make_pacman(maze, walls_const, callback=display_maze)
