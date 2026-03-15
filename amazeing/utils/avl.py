@@ -49,14 +49,21 @@ class Tree[T]:
         other.root = a
         self.root = b
 
-    def join(self, rhs: "Tree[T]") -> None:
-        if self.height() >= rhs.height():
-            self.rjoin(rhs)
+    def ljoin(self, lhs: "Tree[T]") -> None:
+        if self.height() >= lhs.height():
+            self.__ljoin(lhs)
         else:
-            rhs.ljoin(self)
+            lhs.__rjoin(self)
+            self.exchange(lhs)
+
+    def rjoin(self, rhs: "Tree[T]") -> None:
+        if self.height() >= rhs.height():
+            self.__rjoin(rhs)
+        else:
+            rhs.__ljoin(self)
             self.exchange(rhs)
 
-    def ljoin(self, lhs: "Tree[T]") -> None:
+    def __ljoin(self, lhs: "Tree[T]") -> None:
         if self.root is None:
             self.exchange(lhs)
         if self.root is None or lhs.root is None:
@@ -72,7 +79,7 @@ class Tree[T]:
         new.update_height()
         new.parent.balance_one_propagate()
 
-    def rjoin(self, rhs: "Tree[T]") -> None:
+    def __rjoin(self, rhs: "Tree[T]") -> None:
         if self.root is None:
             self.exchange(rhs)
         if self.root is None or rhs.root is None:
@@ -81,7 +88,7 @@ class Tree[T]:
         insert = rhs.root
         rhs.root = None
         while isinstance(curr, Branch) and curr.height > insert.height + 1:
-            curr = curr.lhs
+            curr = curr.rhs
         parent = curr.parent
         new = Branch(curr.parent, curr.with_parent, insert.with_parent)
         parent.replace(curr, new)
@@ -102,6 +109,28 @@ class Node[T]:
         if isinstance(self.parent, Tree):
             return self.parent
         return self.parent.root()
+
+    def split_up(self) -> tuple[Tree, Tree]:
+        """
+        makes self.parent empty
+        """
+        curr = self
+        lhs = Tree()
+        rhs = Tree()
+        while isinstance(curr.parent, Node):
+            curr_parent = curr.parent
+            extra = Tree()
+            if curr_parent.lhs is curr:
+                extra.root = curr_parent.rhs.with_parent(extra)
+                rhs.rjoin(extra)
+            elif curr_parent.rhs is curr:
+                extra.root = curr_parent.lhs.with_parent(extra)
+                lhs.ljoin(extra)
+            else:
+                raise Exception("Invalid AVL structure")
+            curr = curr_parent
+        curr.parent.root = None
+        return (lhs, rhs)
 
 
 class Branch[T](Node[T]):

@@ -32,9 +32,14 @@ keys2 = {i: tree2.append(i) for i in range(25)}
 for i in range(1, 10, 3):
     keys2[i].remove()
 
-tree.join(tree2)
+tree.rjoin(tree2)
 
 print(tree)
+
+lhs_tree, rhs_tree = keys2[18].split_up()
+
+print(lhs_tree)
+print(rhs_tree)
 
 
 exit(0)
