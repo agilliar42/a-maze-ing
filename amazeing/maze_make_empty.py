@@ -12,5 +12,5 @@ def maze_make_empty(
     walls = [wall for wall in maze.walls_full() if wall not in walls_const]
     random.shuffle(walls)
     for wall in walls:
-        maze.set_wall(wall)
+        maze.set_wall(wall, False)
         callback(maze)

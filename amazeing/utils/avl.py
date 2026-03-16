@@ -10,6 +10,10 @@ class Tree[T]:
     def __repr__(self) -> str:
         return f"{self.root}" if self.root is not None else "(empty)"
 
+    def validate(self) -> None:
+        if self.root is not None:
+            self.root.validate()
+
     def append(self, value: T) -> "Leaf[T]":
         if self.root is None:
             leaf = Leaf(self, value)
@@ -64,6 +68,8 @@ class Tree[T]:
         self.root = b
 
     def ljoin(self, lhs: "Tree[T]") -> None:
+        if self is lhs:
+            raise Exception("Cannot merge tree with itself")
         if self.height() >= lhs.height():
             self.__ljoin(lhs)
         else:
@@ -71,6 +77,8 @@ class Tree[T]:
             self.exchange(lhs)
 
     def rjoin(self, rhs: "Tree[T]") -> None:
+        if self is rhs:
+            raise Exception("Cannot merge tree with itself")
         if self.height() >= rhs.height():
             self.__rjoin(rhs)
         else:
@@ -115,6 +123,18 @@ class Node[T]:
         self.parent: Branch[T] | Tree[T] = parent
         self.height: int = 1
 
+    def validate(self) -> None:
+        visited = set()
+        border: list[Node[T]] = [self]
+        while len(border):
+            curr = border.pop()
+            if curr in visited:
+                raise Exception("Cycle in tree")
+            visited.add(curr)
+            if isinstance(curr, Branch):
+                border.append(curr.lhs)
+                border.append(curr.rhs)
+
     def with_parent(self, parent: "Branch[T] | Tree[T]") -> "Node[T]":
         self.parent = parent
         return self
@@ -129,11 +149,11 @@ class Node[T]:
         makes self.parent empty
         """
         curr = self
-        lhs = Tree()
-        rhs = Tree()
+        lhs = Tree[T]()
+        rhs = Tree[T]()
         while isinstance(curr.parent, Node):
             curr_parent = curr.parent
-            extra = Tree()
+            extra = Tree[T]()
             if curr_parent.lhs is curr:
                 extra.root = curr_parent.rhs.with_parent(extra)
                 rhs.rjoin(extra)
@@ -250,7 +270,7 @@ class Branch[T](Node[T]):
         #      m   d     a   b  c   d
         #     / \
         #    b   c
-        n = self.lhs
+        n = self.rhs
         if not isinstance(n, Branch):
             return
         m = n.lhs
@@ -341,6 +361,7 @@ class Branch[T](Node[T]):
     def balance_one(self):
         if abs(self.get_balance()) <= 1:
             return
+
         if self.get_balance() > 0:
             # right is taller
             if not isinstance(self.rhs, Branch):
@@ -357,6 +378,7 @@ class Branch[T](Node[T]):
                 self.rotate_lr()
             else:
                 self.rotate_ll()
+        self.root().validate()
 
     def balance_one_propagate(self) -> None:
         init_height = self.height

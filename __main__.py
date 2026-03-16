@@ -11,23 +11,11 @@ import random
 
 
 from amazeing.config.config_parser import Config
-from amazeing.maze_class import maze_network_tracker
-from amazeing.maze_class.maze_coords import Cardinal, CellCoord, WallCoord
+from amazeing.maze_class.maze_network_tracker import MazeNetworkTracker
+from amazeing.maze_class.maze_coords import Cardinal, CellCoord
+from amazeing.maze_class.maze_dirty_tracker import MazeDirtyTracker
 from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
 from amazeing.maze_display.backend import CloseRequested, IVec2
-from amazeing.utils import AVLTree
-
-forest = maze_network_tracker.DualForest()
-for wall in CellCoord(0, 0).walls():
-    forest.fill_wall(wall)
-for wall in CellCoord(1, 0).walls():
-    forest.fill_wall(wall)
-for wall in CellCoord(3, 0).walls():
-    forest.fill_wall(wall)
-
-print(forest)
-
-exit(0)
 
 config = Config.parse(open("./example.conf").read())
 
@@ -37,6 +25,8 @@ if config.seed is not None:
 dims = IVec2(config.width, config.height)
 
 maze = Maze(dims)
+
+dirty_tracker = MazeDirtyTracker(maze)
 
 maze.outline()
 
@@ -71,8 +61,8 @@ path = TileCycle(tilemaps.path, backend.map_style_cb())
 
 def clear_backend() -> None:
     backend.set_style(empty.curr_style())
-    for wall in maze.walls_dirty():
-        if maze.get_wall(wall).is_full():
+    for wall in dirty_tracker.curr_dirty():
+        if maze.get_wall(wall):
             continue
         for tile in wall.tile_coords():
             backend.draw_tile(tile)
@@ -80,22 +70,22 @@ def clear_backend() -> None:
 
 def display_maze(maze: Maze) -> None:
     clear_backend()
-    pathfind()
+    # pathfind()
     backend.set_style(full.curr_style())
 
     rewrites = {
-        wall for wall in maze.walls_dirty() if maze.get_wall(wall).is_full()
+        wall for wall in dirty_tracker.curr_dirty() if maze.get_wall(wall)
     } | {
         e
-        for wall in maze.walls_dirty()
+        for wall in dirty_tracker.curr_dirty()
         for e in wall.neighbours()
-        if maze.check_coord(e) and maze.get_wall(e).is_full()
+        if maze.check_coord(e) and maze.get_wall(e)
     }
 
     for wall in rewrites:
         for pixel in wall.tile_coords():
             backend.draw_tile(pixel)
-    maze.clear_dirty()
+    dirty_tracker.clear()
     backend.present()
     poll_events(0)
 
@@ -138,67 +128,67 @@ def elipse_manhattan(a: IVec2, b: IVec2, a2: IVec2, b2: IVec2) -> int:
     )
 
 
-def pathfind_necessary() -> bool:
-    entry = config.entry
-    exit = config.exit
-    if entry is None or exit is None:
-        return False
-    if len(prev_solution) == 0:
-        return True
-    if any(
-        map(
-            lambda e: e in maze.walls_dirty() and maze.get_wall(e).is_full(),
-            Cardinal.path_to_walls(prev_solution, CellCoord(entry)),
-        )
-    ):
-        return True
-    if any(
-        map(
-            lambda e: elipse_manhattan(entry, exit, *e.neighbour_cells())
-            < len(prev_solution),
-            filter(
-                lambda wall: not maze.get_wall(wall).is_full(),
-                maze.walls_dirty(),
-            ),
-        )
-    ):
-        return True
-    return False
+# def pathfind_necessary() -> bool:
+#    entry = config.entry
+#    exit = config.exit
+#    if entry is None or exit is None:
+#        return False
+#    if len(prev_solution) == 0:
+#        return True
+#    if any(
+#        map(
+#            lambda e: e in dirty_tracker.curr_dirty() and maze.get_wall(e),
+#            Cardinal.path_to_walls(prev_solution, CellCoord(entry)),
+#        )
+#    ):
+#        return True
+#    if any(
+#        map(
+#            lambda e: elipse_manhattan(entry, exit, *e.neighbour_cells())
+#            < len(prev_solution),
+#            filter(
+#                lambda wall: not maze.get_wall(wall),
+#                dirty_tracker.curr_dirty(),
+#            ),
+#        )
+#    ):
+#        return True
+#    return False
+#
+#
+# def pathfind() -> None:
+#    if not pathfind_necessary():
+#        return
+#    if config.entry is None or config.exit is None:
+#        return
+#    solution = maze.pathfind(CellCoord(config.entry), CellCoord(config.exit))
+#    if solution is None or prev_solution == solution:
+#        return
+#    prev_tiles = Cardinal.path_to_tiles(prev_solution, CellCoord(config.entry))
+#    tiles = Cardinal.path_to_tiles(solution, CellCoord(config.entry))
+#    backend.set_style(empty.curr_style())
+#    for tile in prev_tiles:
+#        backend.draw_tile(tile)
+#    backend.set_style(path.curr_style())
+#    for tile in tiles:
+#        backend.draw_tile(tile)
+#    backend.present()
+#    prev_solution.clear()
+#    prev_solution.extend(solution)
 
 
-def pathfind() -> None:
-    if not pathfind_necessary():
-        return
-    if config.entry is None or config.exit is None:
-        return
-    solution = maze.pathfind(CellCoord(config.entry), CellCoord(config.exit))
-    if solution is None or prev_solution == solution:
-        return
-    prev_tiles = Cardinal.path_to_tiles(prev_solution, CellCoord(config.entry))
-    tiles = Cardinal.path_to_tiles(solution, CellCoord(config.entry))
-    backend.set_style(empty.curr_style())
-    for tile in prev_tiles:
-        backend.draw_tile(tile)
-    backend.set_style(path.curr_style())
-    for tile in tiles:
-        backend.draw_tile(tile)
-    backend.present()
-    prev_solution.clear()
-    prev_solution.extend(solution)
+network_tracker = MazeNetworkTracker(maze)
+maze_make_perfect(maze, network_tracker, callback=display_maze)
+# maze_make_pacman(maze, walls_const, callback=display_maze)
 
 
-maze_make_perfect(maze, callback=display_maze)
-maze_make_pacman(maze, walls_const, callback=display_maze)
+# pathfind()
 
-
-pathfind()
-
-
-while True:
-    maze_make_perfect(maze, callback=display_maze)
+while False:
+    maze_make_perfect(maze, network_tracker, callback=display_maze)
     # poll_events(200)
     maze_make_pacman(maze, walls_const, callback=display_maze)
     # maze_make_empty(maze, walls_const, callback=display_maze)
     # poll_events(200)
-    maze._rebuild()
+    # maze._rebuild()
 poll_events()

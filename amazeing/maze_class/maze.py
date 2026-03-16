@@ -14,31 +14,20 @@ class Maze:
     def __init__(self, dims: IVec2) -> None:
         self.__dims = dims
         self.observers: set[MazeObserver] = set()
-        # list of lines
-        self.horizontal: list[list[bool]] = [
-            [False for _ in range(0, self.__dims.x)]
-            for _ in range(0, self.__dims.y + 1)
-        ]
-        # list of lines
-        self.vertical: list[list[bool]] = [
-            [False for _ in range(0, self.__dims.y)]
-            for _ in range(0, self.__dims.x + 1)
-        ]
+        self.__walls_full: dict[WallCoord, None] = {}
 
     def get_wall(self, coord: WallCoord) -> bool:
-        if coord.orientation == Orientation.HORIZONTAL:
-            return self.horizontal[coord.a][coord.b]
-        return self.vertical[coord.a][coord.b]
+        return coord in self.__walls_full
 
-    def set_wall(self, coord: WallCoord, value: bool) -> None:
-        wall = self.get_wall(coord)
-        if wall != value:
-            if coord.orientation == Orientation.HORIZONTAL:
-                self.horizontal[coord.a][coord.b] = value
-            self.vertical[coord.a][coord.b] = value
+    def set_wall(self, wall: WallCoord, value: bool) -> None:
+        if self.get_wall(wall) != value:
+            if value:
+                self.__walls_full[wall] = None
+            else:
+                self.__walls_full.pop(wall)
 
             for observer in self.observers:
-                observer(coord)
+                observer(wall)
 
     def all_walls(self) -> Generator[WallCoord]:
         for orientation, a_count, b_count in [
@@ -90,7 +79,7 @@ class Maze:
                     self.set_wall(WallCoord(orientation, a, b), True)
 
     def walls_full(self) -> Iterable[WallCoord]:
-        return filter(lambda w: self.get_wall(w), self.all_walls())
+        return self.__walls_full
 
     def walls_empty(self) -> Iterable[WallCoord]:
         return filter(lambda w: not self.get_wall(w), self.all_walls())
