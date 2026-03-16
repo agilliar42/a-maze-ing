@@ -378,7 +378,6 @@ class Branch[T](Node[T]):
                 self.rotate_lr()
             else:
                 self.rotate_ll()
-        self.root().validate()
 
     def balance_one_propagate(self) -> None:
         init_height = self.height
