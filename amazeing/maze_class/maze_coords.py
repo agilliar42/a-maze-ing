@@ -125,16 +125,28 @@ class WallCoord:
         )
         return (IVec2(x, y) for x in x_iter for y in y_iter)
 
-    def neighbour_cells(self) -> list["CellCoord"]:
+    def neighbour_cells(self) -> tuple["CellCoord", "CellCoord"]:
         if self.orientation == Orientation.HORIZONTAL:
-            return [
+            return (
                 CellCoord(self.b, self.a),
                 CellCoord(self.b, self.a - 1),
-            ]
-        return [
+            )
+        return (
             CellCoord(self.a, self.b),
             CellCoord(self.a - 1, self.b),
-        ]
+        )
+
+    def to_split_wall(
+        self,
+    ) -> tuple["SplitWall", "SplitWall"]:
+        def find_cardinal(cell: CellCoord) -> Cardinal:
+            for cardinal in Cardinal.all():
+                if cell.get_wall(cardinal) == self:
+                    return cardinal
+            raise Exception("Find cardinal on wall not on cell")
+
+        a, b = self.neighbour_cells()
+        return ((a, find_cardinal(a)), (b, find_cardinal(b)))
 
 
 class CellCoord(IVec2):
@@ -184,3 +196,18 @@ class CellCoord(IVec2):
 
     def neighbours_unchecked(self) -> Iterable["CellCoord"]:
         return map(self.get_neighbour, Cardinal.all())
+
+
+type SplitWall = tuple[CellCoord, Cardinal]
+
+
+def split_wall_cw(wall: SplitWall) -> SplitWall:
+    return (wall[0].get_neighbour(wall[1]), wall[1].right())
+
+
+def split_wall_ccw(wall: SplitWall) -> SplitWall:
+    return (wall[0].get_neighbour(wall[1]), wall[1].left())
+
+
+def split_wall_opposite(wall: SplitWall) -> SplitWall:
+    return (wall[0].get_neighbour(wall[1]), wall[1].opposite())

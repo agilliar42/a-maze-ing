@@ -11,36 +11,21 @@ import random
 
 
 from amazeing.config.config_parser import Config
-from amazeing.maze_class.maze_coords import Cardinal, CellCoord
+from amazeing.maze_class import maze_network_tracker
+from amazeing.maze_class.maze_coords import Cardinal, CellCoord, WallCoord
 from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
 from amazeing.maze_display.backend import CloseRequested, IVec2
 from amazeing.utils import AVLTree
 
-tree = AVLTree()
+forest = maze_network_tracker.DualForest()
+for wall in CellCoord(0, 0).walls():
+    forest.fill_wall(wall)
+for wall in CellCoord(1, 0).walls():
+    forest.fill_wall(wall)
+for wall in CellCoord(3, 0).walls():
+    forest.fill_wall(wall)
 
-keys = {i: tree.append(i) for i in range(25)}
-
-for i in range(1, 5):
-    keys[i].remove()
-for i in range(5, 15, 2):
-    keys[i].remove()
-
-tree2 = AVLTree()
-
-keys2 = {i: tree2.append(i) for i in range(25)}
-
-for i in range(1, 10, 3):
-    keys2[i].remove()
-
-tree.rjoin(tree2)
-
-print(tree)
-
-lhs_tree, rhs_tree = keys2[18].split_up()
-
-print(lhs_tree)
-print(rhs_tree)
-
+print(forest)
 
 exit(0)
 

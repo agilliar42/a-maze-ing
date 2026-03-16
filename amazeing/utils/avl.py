@@ -24,6 +24,20 @@ class Tree[T]:
         )
         return cast(Leaf, self.root.rhs)
 
+    def prepend(self, value: T) -> "Leaf[T]":
+        if self.root is None:
+            leaf = Leaf(self, value)
+            self.root = leaf
+            return leaf
+        if isinstance(self.root, Branch):
+            return self.root.prepend(value)
+        self.root = Branch(
+            self,
+            lambda parent: Leaf(parent, value),
+            self.root.with_parent,
+        )
+        return cast(Leaf, self.root.lhs)
+
     def height(self) -> int:
         return 0 if self.root is None else self.root.height
 
@@ -71,13 +85,13 @@ class Tree[T]:
         curr = self.root
         insert = lhs.root
         lhs.root = None
-        while isinstance(curr, Branch) and curr.height > insert.height + 1:
+        while isinstance(curr, Branch) and curr.height > insert.height:
             curr = curr.lhs
         parent = curr.parent
-        new = Branch(curr.parent, insert.with_parent, curr.with_parent)
+        new = Branch(parent, insert.with_parent, curr.with_parent)
         parent.replace(curr, new)
         new.update_height()
-        new.parent.balance_one_propagate()
+        parent.balance_one_propagate()
 
     def __rjoin(self, rhs: "Tree[T]") -> None:
         if self.root is None:
@@ -87,13 +101,13 @@ class Tree[T]:
         curr = self.root
         insert = rhs.root
         rhs.root = None
-        while isinstance(curr, Branch) and curr.height > insert.height + 1:
+        while isinstance(curr, Branch) and curr.height > insert.height:
             curr = curr.rhs
         parent = curr.parent
-        new = Branch(curr.parent, curr.with_parent, insert.with_parent)
+        new = Branch(parent, curr.with_parent, insert.with_parent)
         parent.replace(curr, new)
         new.update_height()
-        new.parent.balance_one_propagate()
+        parent.balance_one_propagate()
 
 
 class Node[T]:
@@ -110,7 +124,7 @@ class Node[T]:
             return self.parent
         return self.parent.root()
 
-    def split_up(self) -> tuple[Tree, Tree]:
+    def split_up(self) -> tuple[Tree[T], Tree[T]]:
         """
         makes self.parent empty
         """
@@ -299,11 +313,6 @@ class Branch[T](Node[T]):
         self.update_height()
 
     def append(self, value: T) -> "Leaf[T]":
-        if self.rhs is None:
-            leaf = Leaf[T](self, value)
-            self.rhs = leaf
-            self.balance_one_propagate()
-            return leaf
         if isinstance(self.rhs, Branch):
             return self.rhs.append(value)
         new = Branch[T](
@@ -313,6 +322,19 @@ class Branch[T](Node[T]):
         )
         self.rhs = new
         new_leaf = cast(Leaf[T], new.rhs)
+        self.balance_one_propagate()
+        return new_leaf
+
+    def prepend(self, value: T) -> "Leaf[T]":
+        if isinstance(self.lhs, Branch):
+            return self.lhs.prepend(value)
+        new = Branch[T](
+            self,
+            lambda parent: Leaf[T](parent, value),
+            self.lhs.with_parent,
+        )
+        self.lhs = new
+        new_leaf = cast(Leaf[T], new.lhs)
         self.balance_one_propagate()
         return new_leaf
 
