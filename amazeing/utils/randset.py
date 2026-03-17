@@ -45,8 +45,10 @@ class Randset[T](MutableSequence[T], MutableSet[T]):
 
     @overload
     def __delitem__(self, pos: int) -> None: ...
+
     @overload
     def __delitem__(self, pos: slice) -> None: ...
+
     def __delitem__(self, pos: int | slice) -> None:
         if isinstance(pos, int):
             self.discard(self.__elems[pos])

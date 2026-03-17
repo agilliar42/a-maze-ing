@@ -1,4 +1,3 @@
-from sys import stderr
 from typing import Callable
 from amazeing import Maze, WallCoord
 import random

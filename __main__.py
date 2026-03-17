@@ -1,4 +1,3 @@
-from sys import stderr
 import time
 from amazeing import (
     Maze,
