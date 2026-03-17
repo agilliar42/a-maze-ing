@@ -1,3 +1,4 @@
+from sys import stderr
 import time
 from amazeing import (
     Maze,
@@ -5,7 +6,6 @@ from amazeing import (
     Pattern,
     maze_make_pacman,
     maze_make_perfect,
-    maze_make_empty,
 )
 import random
 
@@ -27,6 +27,7 @@ dims = IVec2(config.width, config.height)
 maze = Maze(dims)
 
 dirty_tracker = MazeDirtyTracker(maze)
+pacman_tracker = MazeDirtyTracker(maze)
 
 maze.outline()
 
@@ -92,16 +93,20 @@ def display_maze(maze: Maze) -> None:
 
 def poll_events(timeout_ms: int = -1) -> None:
     start = time.monotonic()
-    elapsed_ms = lambda: int((time.monotonic() - start) * 1000.0)
-    timeout = lambda: (
-        max(timeout_ms - elapsed_ms(), 0) if timeout_ms != -1 else -1
-    )
+
+    def elapsed_ms() -> int:
+        return int((time.monotonic() - start) * 1000.0)
+
+    def timeout() -> int:
+        return max(timeout_ms - elapsed_ms(), 0) if timeout_ms != -1 else -1
+
+    backend.present()
     while True:
         event = backend.event(timeout())
-        if event is None:
-            if timeout_ms == -1:
-                continue
-            return
+        if isinstance(event, bool):
+            if timeout() == 0 and not event:
+                return
+            continue
         if isinstance(event, CloseRequested) or event.sym == "q":
             exit(0)
         if event.sym == "c":
@@ -111,7 +116,6 @@ def poll_events(timeout_ms: int = -1) -> None:
             empty.cycle()
         else:
             continue
-        backend.present()
 
 
 prev_solution: list[Cardinal] = []
@@ -164,7 +168,7 @@ def elipse_manhattan(a: IVec2, b: IVec2, a2: IVec2, b2: IVec2) -> int:
 #    solution = maze.pathfind(CellCoord(config.entry), CellCoord(config.exit))
 #    if solution is None or prev_solution == solution:
 #        return
-#    prev_tiles = Cardinal.path_to_tiles(prev_solution, CellCoord(config.entry))
+#   prev_tiles = Cardinal.path_to_tiles(prev_solution, CellCoord(config.entry))
 #    tiles = Cardinal.path_to_tiles(solution, CellCoord(config.entry))
 #    backend.set_style(empty.curr_style())
 #    for tile in prev_tiles:
@@ -179,7 +183,7 @@ def elipse_manhattan(a: IVec2, b: IVec2, a2: IVec2, b2: IVec2) -> int:
 
 network_tracker = MazeNetworkTracker(maze)
 maze_make_perfect(maze, network_tracker, callback=display_maze)
-# maze_make_pacman(maze, walls_const, callback=display_maze)
+maze_make_pacman(maze, walls_const, pacman_tracker, callback=display_maze)
 
 
 # pathfind()
@@ -191,4 +195,5 @@ while False:
     # maze_make_empty(maze, walls_const, callback=display_maze)
     # poll_events(200)
     # maze._rebuild()
-poll_events()
+while True:
+    poll_events(16)

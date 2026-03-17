@@ -26,7 +26,7 @@ class Tree[T]:
             self.root.with_parent,
             lambda parent: Leaf(parent, value),
         )
-        return cast(Leaf, self.root.rhs)
+        return cast(Leaf[T], self.root.rhs)
 
     def prepend(self, value: T) -> "Leaf[T]":
         if self.root is None:
@@ -40,7 +40,7 @@ class Tree[T]:
             lambda parent: Leaf(parent, value),
             self.root.with_parent,
         )
-        return cast(Leaf, self.root.lhs)
+        return cast(Leaf[T], self.root.lhs)
 
     def height(self) -> int:
         return 0 if self.root is None else self.root.height
@@ -358,7 +358,7 @@ class Branch[T](Node[T]):
         self.balance_one_propagate()
         return new_leaf
 
-    def balance_one(self):
+    def balance_one(self) -> None:
         if abs(self.get_balance()) <= 1:
             return
 

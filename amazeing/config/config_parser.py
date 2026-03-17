@@ -252,7 +252,7 @@ def DefaultedStrField[T, U](
                         "Failed to construct defaulted field " + self.name()
                     )
                 acc.append(res[0])
-            return self.merge(acc)
+            return self.merge(acc)  # type: ignore
 
     return Inner
 
@@ -260,7 +260,7 @@ def DefaultedStrField[T, U](
 def MappedField[T, U, V](
     cls: Type[ConfigField[T, U]], mapping: Callable[[U], V]
 ) -> Type[ConfigField[T, V]]:
-    class Inner(ConfigField[T, V]):  # type: ignore
+    class Inner(ConfigField[T, V]):
         def __init__(self, name: str) -> None:
             self.__inner = cls(name)
             super().__init__(name)
@@ -334,7 +334,7 @@ def line_parser[T](
 
 
 def fields_parser(
-    fields_raw: dict[str, type[ConfigField]],
+    fields_raw: dict[str, type[ConfigField[Any]]],
 ) -> Parser[dict[str, Any]]:
     fields = {key: cls(key) for key, cls in fields_raw.items()}
     parse_line = terminated(line_parser(fields), cut(tag("\n")))

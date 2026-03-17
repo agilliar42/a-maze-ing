@@ -1,5 +1,4 @@
-from typing import Callable, Generator, Iterable, cast
-
+from typing import Callable, Generator, Iterable
 from amazeing.maze_display.backend import IVec2
 from .maze_coords import (
     CellCoord,
@@ -83,3 +82,28 @@ class Maze:
 
     def walls_empty(self) -> Iterable[WallCoord]:
         return filter(lambda w: not self.get_wall(w), self.all_walls())
+
+    def wall_cuts_cycle(self, wall: WallCoord) -> bool:
+        return any(
+            (
+                len(
+                    [
+                        ()
+                        for wall in self.get_walls_checked(list(cell.walls()))
+                        if wall
+                    ]
+                )
+                >= (3 if self.get_wall(wall) else 2)
+            )
+            for cell in wall.neighbour_cells()
+        )
+
+    def wall_leaf_neighbours(self, coord: WallCoord) -> list[WallCoord]:
+        leaf_f: Callable[
+            [Callable[[WallCoord], list[WallCoord]]], list[WallCoord]
+        ] = lambda f: (
+            list(filter(lambda c: self.check_coord(c), f(coord)))
+            if all(not wall for wall in self.get_walls_checked(f(coord)))
+            else []
+        )
+        return leaf_f(WallCoord.a_neighbours) + leaf_f(WallCoord.b_neighbours)

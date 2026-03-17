@@ -165,13 +165,13 @@ class Box(ABC):
 
 class VBox[T](Box):
     def __init__(
-        self, layout: Layout, boxes: list[tuple[Box, T]] = []
+        self, layout: Layout[T], boxes: list[tuple[Box, T]] = []
     ) -> None:
         self.boxes: list[tuple[Box, T]] = boxes
-        self.layout: Layout = layout
+        self.layout: Layout[T] = layout
 
     @staticmethod
-    def noassoc(layout: Layout, boxes: list[Box]) -> "VBox[None]":
+    def noassoc(layout: Layout[None], boxes: list[Box]) -> "VBox[None]":
         return VBox(layout, [(box, None) for box in boxes])
 
     def dims(self) -> BVec2:
@@ -199,13 +199,13 @@ class VBox[T](Box):
 
 class HBox[T](Box):
     def __init__(
-        self, layout: Layout, boxes: list[tuple[Box, T]] = []
+        self, layout: Layout[T], boxes: list[tuple[Box, T]] = []
     ) -> None:
         self.boxes: list[tuple[Box, T]] = boxes
-        self.layout: Layout = layout
+        self.layout: Layout[T] = layout
 
     @staticmethod
-    def noassoc(layout: Layout, boxes: list[Box]) -> "HBox[None]":
+    def noassoc(layout: Layout[None], boxes: list[Box]) -> "HBox[None]":
         return HBox(layout, [(box, None) for box in boxes])
 
     def dims(self) -> BVec2:
@@ -265,11 +265,17 @@ class DBox(Box):
         self.__inner.laid_out(at, into)
 
 
-def vpad_box(min_pad: int = 0, cb=lambda _at, _into: None) -> FBox:
+def vpad_box(
+    min_pad: int = 0,
+    cb: Callable[[IVec2, IVec2], None] = lambda _at, _into: None,
+) -> FBox:
     return FBox(IVec2(BInt(0), BInt(min_pad, True)), cb)
 
 
-def hpad_box(min_pad: int = 0, cb=lambda _at, _into: None) -> FBox:
+def hpad_box(
+    min_pad: int = 0,
+    cb: Callable[[IVec2, IVec2], None] = lambda _at, _into: None,
+) -> FBox:
     return FBox(IVec2(BInt(min_pad, True), BInt(0)), cb)
 
 

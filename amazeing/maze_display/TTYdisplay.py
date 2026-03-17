@@ -13,7 +13,7 @@ from amazeing.maze_display.layout import (
     layout_sort_chunked,
     layout_split,
 )
-from .backend import Backend, IVec2, BackendEvent, KeyboardInput
+from .backend import IVec2, BackendEvent, KeyboardInput
 import curses
 
 
@@ -286,7 +286,9 @@ class TileMaps:
                 dim,
             )
 
-        def add_style(tilemap, size=mazetile_dims):
+        def add_style(
+            tilemap: list[ColoredLine], size: IVec2 = mazetile_dims
+        ) -> int:
             return backend.add_style(new_tilemap(tilemap, size))
 
         self.empty: list[int] = list(map(add_style, config.tilemap_empty))
@@ -301,7 +303,9 @@ class TileMaps:
 
 
 class TileCycle[T]:
-    def __init__(self, styles: list[T], cb: Callable[[T], None], i=0) -> None:
+    def __init__(
+        self, styles: list[T], cb: Callable[[T], None], i: int = 0
+    ) -> None:
         if len(styles) == 0:
             raise BackendException("No styles provided in tilecycle")
         self.__styles = styles
@@ -309,7 +313,7 @@ class TileCycle[T]:
         self.__i = i
         cb(styles[i])
 
-    def cycle(self, by: int = 1):
+    def cycle(self, by: int = 1) -> None:
         new = (self.__i + by) % len(self.__styles)
         if new != self.__i:
             self.__cb(self.__styles[new])
@@ -319,7 +323,7 @@ class TileCycle[T]:
         return self.__styles[self.__i]
 
 
-class TTYBackend(Backend[int]):
+class TTYBackend:
     def __init__(
         self, maze_dims: IVec2, wall_dim: IVec2, cell_dim: IVec2
     ) -> None:
@@ -389,7 +393,7 @@ class TTYBackend(Backend[int]):
 
         self.__style_bimap: BiMap[int, IVec2] = BiMap()
 
-    def __del__(self):
+    def __del__(self) -> None:
         curses.curs_set(1)
         curses.nocbreak()
         self.__screen.keypad(False)
@@ -411,7 +415,7 @@ class TTYBackend(Backend[int]):
 
         def inner(new: int) -> None:
             nonlocal curr
-            if curr == None:
+            if curr is None:
                 curr = new
             if curr == new:
                 return
@@ -448,12 +452,12 @@ class TTYBackend(Backend[int]):
         self.__layout.laid_out(IVec2(0, 0), IVec2(x, y))
         self.__scratch.overwrite(self.__screen)
 
-    def event(self, timeout_ms: int = -1) -> BackendEvent | None:
+    def event(self, timeout_ms: int = -1) -> BackendEvent | bool:
         self.__screen.timeout(timeout_ms)
         try:
             key = self.__screen.getkey()
         except curses.error:
-            return None
+            return False
         match key:
             case "KEY_RESIZE":
                 self.__resize = True
@@ -467,5 +471,4 @@ class TTYBackend(Backend[int]):
                 self.__pad.scroll(IVec2(-1, 0))
             case _:
                 return KeyboardInput(key)
-        self.present()
-        return None
+        return True

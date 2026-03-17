@@ -176,5 +176,5 @@ class MazeNetworkTracker:
     def wall_bisects(self, wall: WallCoord) -> bool:
         return self.__forest.wall_bisects(wall)
 
-    def end(self):
+    def end(self) -> None:
         self.__maze.observers.discard(self.__observer)
