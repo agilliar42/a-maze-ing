@@ -3,9 +3,6 @@ from typing import cast, overload
 
 
 class Randset[T](MutableSequence[T], MutableSet[T]):
-    # __getitem__, __setitem__, __delitem__, __len__, and insert().
-    # __contains__, __iter__, __len__,
-    # add(), and discard().
     def __init__(self) -> None:
         self.__elems: list[T] = []
         self.__idx_map: dict[T, int] = {}
@@ -72,4 +69,4 @@ class Randset[T](MutableSequence[T], MutableSet[T]):
         del self.__idx_map[value]
 
     def insert(self, index: int, value: T) -> None:
-        raise NotImplementedError("slice setitem in randset")
+        raise NotImplementedError("index insert randset")

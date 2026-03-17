@@ -273,28 +273,8 @@ class Branch[T](Node[T]):
         n = self.rhs
         if not isinstance(n, Branch):
             return
-        m = n.lhs
-        if not isinstance(m, Branch):
-            return
-        a = self.lhs
-        b = m.lhs
-        c = m.rhs
-        d = n.rhs
-        n.lhs = a
-        n.rhs = b
-        m.lhs = c
-        m.rhs = d
-        self.lhs = n
-        self.rhs = m
-        a.parent = n
-        b.parent = n
-        c.parent = m
-        d.parent = m
-        n.parent = self
-        m.parent = self
-        n.update_height()
-        m.update_height()
-        self.update_height()
+        n.rotate_ll()
+        self.rotate_rr()
 
     def rotate_lr(self) -> None:
         # Double AVL rotate:
@@ -309,28 +289,9 @@ class Branch[T](Node[T]):
         n = self.lhs
         if not isinstance(n, Branch):
             return
-        m = n.rhs
-        if not isinstance(m, Branch):
-            return
-        a = n.lhs
-        b = m.lhs
-        c = m.rhs
-        d = self.rhs
-        n.lhs = a
-        n.rhs = b
-        m.lhs = c
-        m.rhs = d
-        self.lhs = n
-        self.rhs = m
-        a.parent = n
-        b.parent = n
-        c.parent = m
-        d.parent = m
-        n.parent = self
-        m.parent = self
-        n.update_height()
-        m.update_height()
-        self.update_height()
+        n.rotate_rr()
+        self.rotate_ll()
+        n = self.lhs
 
     def append(self, value: T) -> "Leaf[T]":
         if isinstance(self.rhs, Branch):

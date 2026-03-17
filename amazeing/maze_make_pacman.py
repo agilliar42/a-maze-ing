@@ -2,18 +2,19 @@ from typing import Callable
 from amazeing import Maze, WallCoord
 import random
 
-from amazeing.maze_class.maze_dirty_tracker import MazeDirtyTracker
+from amazeing.maze_class.maze_pacman_tracker import MazePacmanTracker
 
 
 def maze_make_pacman(
     maze: Maze,
     walls_const: set[WallCoord],
-    dirty_tracker: MazeDirtyTracker,
+    pacman_tracker: MazePacmanTracker,
     callback: Callable[[Maze], None] = lambda _: None,
     iterations: int = 10,
 ) -> None:
     for _ in range(0, iterations):
-        walls = dirty_tracker.clear()
+        walls = pacman_tracker.clear()
+        random.shuffle(walls)
         n = 0
         for wall in walls:
             if not maze.get_wall(wall) or wall in walls_const:

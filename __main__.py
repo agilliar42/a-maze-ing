@@ -13,6 +13,7 @@ from amazeing.config.config_parser import Config
 from amazeing.maze_class.maze_network_tracker import MazeNetworkTracker
 from amazeing.maze_class.maze_coords import Cardinal, CellCoord
 from amazeing.maze_class.maze_dirty_tracker import MazeDirtyTracker
+from amazeing.maze_class.maze_pacman_tracker import MazePacmanTracker
 from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
 from amazeing.maze_display.backend import CloseRequested, IVec2
 
@@ -26,7 +27,7 @@ dims = IVec2(config.width, config.height)
 maze = Maze(dims)
 
 dirty_tracker = MazeDirtyTracker(maze)
-pacman_tracker = MazeDirtyTracker(maze)
+pacman_tracker = MazePacmanTracker(maze)
 
 maze.outline()
 
