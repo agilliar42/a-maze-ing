@@ -213,79 +213,87 @@ class Branch[T](Node[T]):
     def rotate_rr(self) -> None:
         # Simple AVL rotate:
         #
-        #   self     -->     self
-        #  /    \           /    \
-        # a      n         n      c
-        #       / \       / \
-        #      b   c     a   b
-        n = self.rhs
-        if not isinstance(n, Branch):
+        #   n     -->     m
+        #  / \           / \
+        # a   m         n   c
+        #    / \       / \
+        #   b   c     a   b
+        parent = self.parent
+        n = self
+        m = n.rhs
+        if not isinstance(m, Branch):
             return
-        a = self.lhs
-        b = n.lhs
-        c = n.rhs
+        a = n.lhs
+        b = m.lhs
+        c = m.rhs
         n.lhs = a
         n.rhs = b
-        self.rhs = c
-        self.lhs = n
+        m.lhs = n
+        m.rhs = c
         a.parent = n
         b.parent = n
-        c.parent = self
-        n.parent = self
+        c.parent = m
+        n.parent = m
         n.update_height()
-        self.update_height()
+        m.update_height()
+        m.parent = parent
+        m.parent.replace(self, m)
 
     def rotate_ll(self) -> None:
         # Simple AVL rotate:
         #
-        #     self   -->    self
-        #    /    \        /    \
-        #   n      c     a       n
-        #  / \                  / \
-        # a   b                b   c
-        n = self.lhs
+        #     m   -->   n
+        #    / \       / \
+        #   n   c     a   m
+        #  / \           / \
+        # a   b         b   c
+        parent = self.parent
+        m = self
+        n = m.lhs
         if not isinstance(n, Branch):
             return
         a = n.lhs
         b = n.rhs
-        c = self.rhs
-        self.lhs = a
-        n.lhs = b
-        n.rhs = c
-        self.rhs = n
-        a.parent = self
-        b.parent = n
-        c.parent = n
-        n.parent = self
+        c = m.rhs
+        n.lhs = a
+        n.rhs = m
+        m.lhs = b
+        m.rhs = c
+        a.parent = n
+        b.parent = m
+        c.parent = m
+        m.parent = n
         n.update_height()
-        self.update_height()
+        m.update_height()
+        n.parent = parent
+        n.parent.replace(self, n)
 
     def rotate_rl(self) -> None:
         # Double AVL rotate:
         #
-        #   self     -->     self
-        #  /    \           /    \
-        # a      n         n      m
-        #       / \       / \    / \
-        #      m   d     a   b  c   d
-        #     / \
-        #    b   c
-        n = self.rhs
-        if not isinstance(n, Branch):
+        #   n     -->   n       -->      m
+        #  / \         / \              / \
+        # a   o       a   m            /   \
+        #    / \         / \          n     o
+        #   m   d       b   o        / \   / \
+        #  / \             / \      a   b c   d
+        # b   c           c   d
+        m = self.rhs
+        if not isinstance(m, Branch):
             return
-        n.rotate_ll()
+        m.rotate_ll()
         self.rotate_rr()
 
     def rotate_lr(self) -> None:
         # Double AVL rotate:
         #
-        #     self   -->     self
-        #    /    \         /    \
-        #   n      d       n      m
-        #  / \            / \    / \
-        # a   m          a   b  c   d
-        #    / \
-        #   b   c
+        #     o   -->       o   -->      m
+        #    / \           / \          / \
+        #   n   d         m   d        /   \
+        #  / \           / \          n     o
+        # a   m         n   c        / \   / \
+        #    / \       / \          a   b c   d
+        #   b   c     a   b
         n = self.lhs
         if not isinstance(n, Branch):
             return
