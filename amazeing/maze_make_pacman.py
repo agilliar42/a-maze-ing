@@ -14,9 +14,11 @@ def maze_make_pacman(
 ) -> None:
     for _ in range(0, iterations):
         walls = pacman_tracker.clear()
-        random.shuffle(walls)
         n = 0
-        for wall in walls:
+        while len(walls):
+            i = random.randrange(len(walls))
+            wall = walls[i]
+            del walls[i]
             if not maze.get_wall(wall) or wall in walls_const:
                 continue
             leaf_neighbours = maze.wall_leaf_neighbours(wall)

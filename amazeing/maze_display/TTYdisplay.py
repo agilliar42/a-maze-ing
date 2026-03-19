@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator, Iterable
 from amazeing.utils import BiMap
 from amazeing.config.config_parser import Color, Config, ColoredLine, ColorPair
@@ -21,56 +22,44 @@ class BackendException(Exception):
     pass
 
 
-def pad_write_safe(
-    pad: curses.window, dst: IVec2, char: str, attrs: int
-) -> None:
-    try:
-        pad.addch(dst.y, dst.x, char, attrs)
-    except curses.error:
-        pass  # dumb exception when writing bottom right corner
+class ITile(ABC):
+    @abstractmethod
+    def size(self) -> IVec2: ...
+    @abstractmethod
+    def pos(self) -> IVec2: ...
 
-
-class Tile:
-    def __init__(
-        self, pixels: list[list[tuple[str, int]]], dims: IVec2
-    ) -> None:
-        if (
-            len(pixels) > dims.y
-            or max(
-                map(lambda line: sum(map(lambda s: len(s[0]), line)), pixels)
-            )
-            > dims.x
-        ):
-            raise BackendException("Tile too big to fit in set dimensions")
-        self.__pad: curses.window = curses.newpad(dims.y, dims.x)
-        for y, line in enumerate(pixels):
-            x = 0
-            for s, attrs in line:
-                for char in s:
-                    pad_write_safe(self.__pad, IVec2(x, y), char, attrs)
-                    x += 1
-
-    def dims(self) -> IVec2:
-        y, x = self.__pad.getmaxyx()
-        return IVec2(x, y)
+    def __init__(self, pad: curses.window) -> None:
+        super().__init__()
+        self.pad: curses.window = pad
 
     def blit(
         self, src: IVec2, dst: IVec2, size: IVec2, window: curses.window
     ) -> None:
         if size.x <= 0 or size.y <= 0:
             return
-        self.__pad.overwrite(
-            window, *src.yx(), *dst.yx(), *(dst + size - IVec2.splat(1)).yx()
+
+        self.pad.overwrite(
+            window,
+            *(src + self.pos()).yx(),
+            *dst.yx(),
+            *(dst + size - IVec2.splat(1)).yx(),
         )
 
-    def blit_wrapping(
+    def blit_iter(
+        self, src: IVec2, dst: IVec2, size: IVec2
+    ) -> Generator[tuple[IVec2, "SubPixel"]]:
+        for y in range(size.y):
+            for x in range(size.x):
+                pos = IVec2(x, y)
+                yield (dst + pos, SubPixel(self, src + pos))
+
+    def blit_wrapping_subtiles(
         self,
         src: IVec2,
         dst: IVec2,
         size: IVec2,
-        window: curses.window,
-        justify: IVec2 = IVec2.splat(0),
-    ) -> None:
+        justify: IVec2,
+    ) -> Generator[tuple[IVec2, "SubTile"]]:
         def size_offset_iter(
             start: int, size: int, mod: int
         ) -> Generator[tuple[int, int]]:
@@ -82,7 +71,7 @@ class Tile:
 
         if size.x <= 0 or size.y <= 0:
             return
-        dims = self.dims()
+        dims = self.size()
         justify_offset = dims - (src + size) % dims
         src = src + justify_offset * justify
         src = src % dims
@@ -90,28 +79,99 @@ class Tile:
             for y_size, y_offset in size_offset_iter(src.y, size.y, dims.y):
                 sub_size = IVec2(x_size, y_size)
                 offset = IVec2(x_offset, y_offset)
-                self.blit(
-                    (src + offset) % dims, dst + offset, sub_size, window
+                yield (
+                    dst + offset,
+                    SubTile(self, (src + offset) % dims, sub_size),
                 )
 
+    def blit_wrapping(
+        self,
+        src: IVec2,
+        dst: IVec2,
+        size: IVec2,
+        window: curses.window,
+        justify: IVec2 = IVec2.splat(0),
+    ) -> None:
+        for pos, subtile in self.blit_wrapping_subtiles(
+            src, dst, size, justify
+        ):
+            subtile.blit(IVec2.splat(0), pos, subtile.size(), window)
 
-class SubTile(Tile):
-    def __init__(self, tile: Tile, start: IVec2, size: IVec2) -> None:
-        # we do not call super as we only inherit for the blit_wrapping method
-        # it's dirty but it works
-        self.__tile: Tile = tile
-        self.__start: IVec2 = start
+    def blit_wrapping_iter(
+        self,
+        src: IVec2,
+        dst: IVec2,
+        size: IVec2,
+        justify: IVec2 = IVec2.splat(0),
+    ) -> Generator[tuple[IVec2, "SubPixel"]]:
+        for pos, subtile in self.blit_wrapping_subtiles(
+            src, dst, size, justify
+        ):
+            for e in subtile.blit_iter(IVec2.splat(0), pos, subtile.size()):
+                yield e
+
+
+class Tile(ITile):
+    def __init__(
+        self, pixels: list[list[tuple[str, int]]], dims: IVec2
+    ) -> None:
+        def pad_write_safe(
+            pad: curses.window, dst: IVec2, char: str, attrs: int
+        ) -> None:
+            try:
+                pad.addch(dst.y, dst.x, char, attrs)
+            except curses.error:
+                pass  # dumb exception when writing bottom right corner
+
+        if (
+            len(pixels) > dims.y
+            or max(
+                map(lambda line: sum(map(lambda s: len(s[0]), line)), pixels)
+            )
+            > dims.x
+        ):
+            raise BackendException("Tile too big to fit in set dimensions")
+
+        super().__init__(curses.newpad(*dims.yx()))
+
+        for y, line in enumerate(pixels):
+            x = 0
+            for s, attrs in line:
+                for char in s:
+                    pad_write_safe(self.pad, IVec2(x, y), char, attrs)
+                    x += 1
+
+    def size(self) -> IVec2:
+        y, x = self.pad.getmaxyx()
+        return IVec2(x, y)
+
+    def pos(self) -> IVec2:
+        return IVec2.splat(0)
+
+
+class SubPixel(ITile):
+    def __init__(self, tile: ITile, pos: IVec2) -> None:
+        super().__init__(tile.pad)
+        self.__pos: IVec2 = tile.pos() + pos
+
+    def size(self) -> IVec2:
+        return IVec2.splat(1)
+
+    def pos(self) -> IVec2:
+        return self.__pos
+
+
+class SubTile(ITile):
+    def __init__(self, tile: ITile, pos: IVec2, size: IVec2) -> None:
+        super().__init__(tile.pad)
+        self.__pos: IVec2 = tile.pos() + pos
         self.__size: IVec2 = size
 
-    def dims(self) -> IVec2:
+    def size(self) -> IVec2:
         return self.__size
 
-    def blit(
-        self, src: IVec2, dst: IVec2, size: IVec2, window: curses.window
-    ) -> None:
-        if size.x <= 0 or size.y <= 0:
-            return
-        self.__tile.blit(src + self.__start, dst, size, window)
+    def pos(self) -> IVec2:
+        return self.__pos
 
 
 class MazeTileMap:
@@ -161,7 +221,7 @@ class ScrollablePad:
         init_pos: IVec2 = IVec2.splat(0),
     ) -> None:
         self.__pos = init_pos
-        self.pad: curses.window = curses.newpad(dims.y, dims.x)
+        self.pad: curses.window = curses.newpad(*dims.yx())
         self.constrained = constrained
 
     def dims(self) -> IVec2:
