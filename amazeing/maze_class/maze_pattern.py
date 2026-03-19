@@ -86,6 +86,10 @@ class Pattern:
     def centered_for(
         self, canvas: IVec2, excluding: set[CellCoord] = set()
     ) -> "Pattern":
+        # TODO: don't make a set for the whole maze at the start then
+        # remove from it, find the set of invalid spots then iterate
+        # through valid spots in order of priority and find the first
+        # that matches
         normalized: Pattern = self.normalized()
         negative = normalized.flood_filled().mirrored()
         dims = normalized.dims()

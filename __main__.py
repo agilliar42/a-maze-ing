@@ -16,6 +16,11 @@ from amazeing.maze_class.maze_dirty_tracker import MazeDirtyTracker
 from amazeing.maze_class.maze_pacman_tracker import MazePacmanTracker
 from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
 from amazeing.maze_display.backend import CloseRequested, IVec2
+from amazeing.utils import quadtree
+
+tree = quadtree.Tree.rectangle((IVec2(3, 3), IVec2(8, 11)))
+print(tree)
+exit(0)
 
 config = Config.parse(open("./example.conf").read())
 
