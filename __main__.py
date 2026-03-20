@@ -18,8 +18,15 @@ from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
 from amazeing.maze_display.backend import CloseRequested, IVec2
 from amazeing.utils import quadtree
 
-tree = quadtree.Tree.rectangle((IVec2(3, 3), IVec2(8, 11)))
-print(tree)
+tree1 = quadtree.Tree.rectangle((IVec2(3, 3), IVec2(8, 11)))
+print(tree1)
+tree2 = quadtree.Tree.rectangle((IVec2(0, 0), IVec2(4, 8)))
+print(tree2)
+tree3 = quadtree.Tree.rectangle((IVec2(1, 1), IVec2(8, 10)))
+print(tree3)
+tree4 = tree1 | tree2
+print(tree4)
+print(tree4 & tree3)
 exit(0)
 
 config = Config.parse(open("./example.conf").read())
