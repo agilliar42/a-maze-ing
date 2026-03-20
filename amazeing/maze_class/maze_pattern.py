@@ -1,8 +1,7 @@
-from collections.abc import Iterable
+from collections.abc import Iterable, Generator, Callable
 from amazeing.maze_display.backend import IVec2
 from .maze import Maze
 from .maze_coords import CellCoord
-from typing import Callable
 
 
 class Pattern:
@@ -93,22 +92,28 @@ class Pattern:
         normalized: Pattern = self.normalized()
         negative = normalized.flood_filled().mirrored()
         dims = normalized.dims()
-        slots = set(
-            map(
-                lambda e: CellCoord(e + IVec2.splat(1)),
-                CellCoord(canvas - dims - IVec2.splat(1)).all_up_to(),
-            )
-        )
-        for excluded in excluding:
-            slots -= negative.offset(excluded).__cells
-        if len(slots) == 0:
-            return Pattern([])
-        ideal = (canvas - dims) // IVec2.splat(2)
-        slot = min(
-            slots, key=lambda c: int.__add__(*((e := c - ideal) * e).xy())
-        )
 
-        return normalized.offset(slot)
+        def middle_range_iter(start: int, end: int) -> Generator[int]:
+            r1 = range(end // 2, start - 1, -1)
+            r2 = range(end // 2 + 1, end)
+            for a, b in zip(r1, r2):
+                yield a
+                yield b
+            for e in r1:
+                yield e
+            for e in r2:
+                yield e
+
+        blacklist = set()
+        for excluded in excluding:
+            blacklist |= negative.offset(excluded).__cells
+        slots = canvas - dims
+        for x in middle_range_iter(1, slots.x):
+            for y in middle_range_iter(1, slots.y):
+                pos = CellCoord(x, y)
+                if pos not in blacklist:
+                    return normalized.offset(pos)
+        return Pattern([])
 
     def fill(self, maze: "Maze") -> None:
         for cell in self.__cells:

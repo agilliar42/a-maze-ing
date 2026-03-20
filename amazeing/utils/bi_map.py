@@ -25,8 +25,8 @@ class BiMap[K, R]:
         if len(self.__map[key]) == 0:
             self.__map.pop(key)
 
-    def get(self, key: K) -> Iterable[R]:
-        return list(self.__map[key] if self.contains(key) else [])
+    def get(self, key: K) -> set[R]:
+        return self.__map[key] if self.contains(key) else set()
 
     def revget(self, revkey: R) -> K:
         return self.__revmap[revkey]

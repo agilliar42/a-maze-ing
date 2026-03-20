@@ -470,6 +470,8 @@ class TTYBackend:
         self.__filler: None | int = None
 
         self.__style_bimap: BiMap[int, IVec2] = BiMap()
+        self.__style_rename_bimap: BiMap[int, int] = BiMap()
+        self.__bg_init: Callable[[IVec2], int] | None = None
 
     def __del__(self) -> None:
         curses.curs_set(1)
@@ -485,8 +487,19 @@ class TTYBackend:
             self.__tilemap.dst_coord_rev(end_excl - IVec2.splat(1))
             + IVec2.splat(1),
         )
-        self.__drawn += QuadTree.rectangle(drawn_rect)
-        pass
+        drawn_tree = QuadTree.rectangle(drawn_rect)
+        redrawn = drawn_tree - self.__drawn
+        for tile in redrawn.tiles():
+            if self.__style_bimap.revcontains(tile):
+                style = self.__style_bimap.revget(tile)
+                if self.__style_rename_bimap.revcontains(style):
+                    style = self.__style_rename_bimap.revget(style)
+                self.set_style(style)
+                self.draw_tile(tile)
+            elif self.__bg_init is not None:
+                self.set_style(self.__bg_init(tile))
+                self.draw_tile(tile)
+        self.__drawn += drawn_tree
 
     def set_filler(self, style: int) -> None:
         if self.__filler == style:
@@ -495,7 +508,10 @@ class TTYBackend:
         for box in self.__filler_boxes:
             box.mark_dirty()
 
-    def get_styled(self, style: int) -> Iterable[IVec2]:
+    def set_bg_init(self, bg_init: Callable[[IVec2], int]) -> None:
+        self.__bg_init = bg_init
+
+    def get_styled(self, style: int) -> set[IVec2]:
         return self.__style_bimap.get(style)
 
     def map_style_cb(self) -> Callable[[int], None]:
@@ -507,9 +523,9 @@ class TTYBackend:
                 curr = new
             if curr == new:
                 return
-            self.set_style(new)
-            for tile in self.get_styled(curr):
-                self.draw_tile(tile)
+            if len(self.get_styled(curr)) != 0:
+                self.__drawn = QuadTree()
+                self.__style_rename_bimap.add(new, curr)
             curr = new
 
         return inner

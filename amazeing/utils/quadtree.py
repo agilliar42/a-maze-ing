@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Generator, Iterable
 from typing import cast
 from amazeing.maze_display.backend import IVec2
 from functools import partial
@@ -105,6 +105,23 @@ class Tree:
 
     def __sub__(self, other: "Tree") -> "Tree":
         return self.shared_layer_apply(Tree.node_sub, other)
+
+    def tiles(self) -> Generator[IVec2]:
+        return Tree.node_tiles(self.__root, IVec2.splat(0), self.__height)
+
+    @staticmethod
+    def node_tiles(
+        node: MaybeNode, pos: IVec2, height: int
+    ) -> Generator[IVec2]:
+        if height == 0 and node == True:
+            yield pos
+        if height == 0 or node == False:
+            return
+        for pos, node in zip4(
+            Tree.node_starts(pos, height), Tree.node_split(node)
+        ):
+            for pos in Tree.node_tiles(node, pos, height - 1):
+                yield pos
 
     @staticmethod
     def rectangle(rect: Rect) -> "Tree":
