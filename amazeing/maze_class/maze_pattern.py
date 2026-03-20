@@ -95,15 +95,15 @@ class Pattern:
         dims = normalized.dims()
         slots = set(
             map(
-                lambda e: CellCoord(e + 1),
-                CellCoord(canvas - dims - 1).all_up_to(),
+                lambda e: CellCoord(e + IVec2.splat(1)),
+                CellCoord(canvas - dims - IVec2.splat(1)).all_up_to(),
             )
         )
         for excluded in excluding:
             slots -= negative.offset(excluded).__cells
         if len(slots) == 0:
             return Pattern([])
-        ideal = (canvas - dims) // 2
+        ideal = (canvas - dims) // IVec2.splat(2)
         slot = min(
             slots, key=lambda c: int.__add__(*((e := c - ideal) * e).xy())
         )

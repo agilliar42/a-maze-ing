@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import assert_never, cast
+from typing import cast
 from amazeing.maze_display.backend import IVec2
 from functools import partial
 from itertools import chain
@@ -8,11 +8,14 @@ type tuple4[T] = tuple[T, T, T, T]
 
 
 def map4[T, U](fn: Callable[[T], U], tup: tuple4[T]) -> tuple4[U]:
-    return cast(tuple4[U], tuple(map(fn, tup)))
+    a, b, c, d = tup
+    return (fn(a), fn(b), fn(c), fn(d))
 
 
 def zip4[T, U](a: tuple4[T], b: tuple4[U]) -> tuple4[tuple[T, U]]:
-    return cast(tuple4[tuple[T, U]], tuple(zip(a, b)))
+    a1, b1, c1, d1 = a
+    a2, b2, c2, d2 = b
+    return ((a1, a2), (b1, b2), (c1, c2), (d1, d2))
 
 
 type Node = tuple4[MaybeNode]
@@ -82,7 +85,7 @@ class Tree:
         res = self.raised_to(other.__height)
 
         def descend(node: MaybeNode, depth: int = 0) -> MaybeNode:
-            if other.__height + depth == self.__height:
+            if other.__height + depth == res.__height:
                 return fn(node, other.__root)
             (a, b, c, d) = Tree.node_split(node)
             a = descend(a, depth + 1)
@@ -92,10 +95,16 @@ class Tree:
         return res.normalized()
 
     def __or__(self, other: "Tree") -> "Tree":
-        return self.shared_layer_apply(Tree.node_union, other)
+        return self.shared_layer_apply(Tree.node_or, other)
 
     def __and__(self, other: "Tree") -> "Tree":
-        return self.shared_layer_apply(Tree.node_intersection, other)
+        return self.shared_layer_apply(Tree.node_and, other)
+
+    def __add__(self, other: "Tree") -> "Tree":
+        return self | other
+
+    def __sub__(self, other: "Tree") -> "Tree":
+        return self.shared_layer_apply(Tree.node_sub, other)
 
     @staticmethod
     def rectangle(rect: Rect) -> "Tree":
@@ -157,26 +166,25 @@ class Tree:
 
     @staticmethod
     def node_starts(pos: IVec2, height: int) -> tuple4[IVec2]:
-        dims = IVec2.splat(1 << (height - 1))
-
-        def f(x: int, y: int) -> IVec2:
-            return pos + IVec2(x, y) * dims
+        dim = 1 << (height - 1)
+        x = IVec2(dim, 0)
+        y = IVec2(0, dim)
 
         return (
-            f(0, 0),
-            f(1, 0),
-            f(0, 1),
-            f(1, 1),
+            pos,
+            e := pos + x,
+            pos + y,
+            e + y,
         )
 
     @staticmethod
-    def node_negation(node: MaybeNode) -> MaybeNode:
+    def node_neg(node: MaybeNode) -> MaybeNode:
         if isinstance(node, bool):
             return not node
-        return map4(Tree.node_negation, node)
+        return map4(Tree.node_neg, node)
 
     @staticmethod
-    def node_union(a: MaybeNode, b: MaybeNode) -> MaybeNode:
+    def node_or(a: MaybeNode, b: MaybeNode) -> MaybeNode:
         match (a, b):
             case (True, _) | (_, True):
                 return True
@@ -184,13 +192,13 @@ class Tree:
                 return n
             case (a, b):
                 return Tree.node_normalize(
-                    map4(lambda e: Tree.node_union(*e), zip4(a, b))
+                    map4(lambda e: Tree.node_or(*e), zip4(a, b))
                 )
         # mypy please do proper control flow analysis
         raise Exception()
 
     @staticmethod
-    def node_intersection(a: MaybeNode, b: MaybeNode) -> MaybeNode:
+    def node_and(a: MaybeNode, b: MaybeNode) -> MaybeNode:
         match (a, b):
             case (False, _) | (_, False):
                 return False
@@ -198,7 +206,23 @@ class Tree:
                 return n
             case (a, b):
                 return Tree.node_normalize(
-                    map4(lambda e: Tree.node_intersection(*e), zip4(a, b))
+                    map4(lambda e: Tree.node_and(*e), zip4(a, b))
+                )
+        # ditto
+        raise Exception()
+
+    @staticmethod
+    def node_sub(a: MaybeNode, b: MaybeNode) -> MaybeNode:
+        match (a, b):
+            case (False, _) | (_, True):
+                return False
+            case (n, False):
+                return n
+            case (True, n):
+                return Tree.node_neg(n)
+            case (a, b):
+                return Tree.node_normalize(
+                    map4(lambda e: Tree.node_sub(*e), zip4(a, b))
                 )
         # ditto
         raise Exception()

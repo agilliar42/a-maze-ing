@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator, Iterable
+import time
 from amazeing.utils import BiMap
 from amazeing.config.config_parser import Color, Config, ColoredLine, ColorPair
 from amazeing.maze_display.layout import (
@@ -14,6 +15,7 @@ from amazeing.maze_display.layout import (
     layout_sort_chunked,
     layout_split,
 )
+from amazeing.utils import Rect, QuadTree
 from .backend import IVec2, BackendEvent, KeyboardInput
 import curses
 
@@ -186,13 +188,23 @@ class MazeTileMap:
         return res
 
     def dst_coord(self, pos: IVec2) -> IVec2:
-        return (n := pos // 2) * self.__cell_dim + (pos - n) * self.__wall_dim
+        return (n := pos // IVec2.splat(2)) * self.__cell_dim + (
+            pos - n
+        ) * self.__wall_dim
 
     def src_coord(self, pos: IVec2) -> IVec2:
-        return pos % 2 * self.__wall_dim
+        return pos % IVec2.splat(2) * self.__wall_dim
+
+    def dst_coord_rev(self, pixel: IVec2) -> IVec2:
+        mod = self.__wall_dim + self.__cell_dim
+        return (pixel // mod) * IVec2.splat(2) + IVec2[int].with_op(
+            lambda a, b: 0 if a < b else 1
+        )(pixel % mod, self.__wall_dim)
 
     def tile_size(self, pos: IVec2) -> IVec2:
-        return (pos + 1) % 2 * self.__wall_dim + pos % 2 * self.__cell_dim
+        return (pos + IVec2.splat(1)) % IVec2.splat(
+            2
+        ) * self.__wall_dim + pos % IVec2.splat(2) * self.__cell_dim
 
     def draw_at(self, at: IVec2, idx: int, window: curses.window) -> None:
         self.__tiles[idx].blit(
@@ -217,12 +229,14 @@ class ScrollablePad:
     def __init__(
         self,
         dims: IVec2,
+        cb: Callable[[Rect], None],
         constrained: bool = True,
         init_pos: IVec2 = IVec2.splat(0),
     ) -> None:
         self.__pos = init_pos
         self.pad: curses.window = curses.newpad(*dims.yx())
         self.constrained = constrained
+        self.cb = cb
 
     def dims(self) -> IVec2:
         y, x = self.pad.getmaxyx()
@@ -248,6 +262,7 @@ class ScrollablePad:
             return
         draw_start = at + win_start
         draw_end = draw_start + draw_dim - IVec2.splat(1)
+        self.cb((pad_start, pad_start + draw_dim))
         self.pad.overwrite(
             window,
             *pad_start.yx(),
@@ -391,7 +406,9 @@ class TTYBackend:
         self.__tilemap: MazeTileMap = MazeTileMap(wall_dim, cell_dim)
         self.__style = 0
 
-        dims = self.__tilemap.dst_coord(maze_dims * 2 + 1)
+        dims = self.__tilemap.dst_coord(
+            maze_dims * IVec2.splat(2) + IVec2.splat(1)
+        )
 
         self.__screen: curses.window = curses.initscr()
         curses.start_color()
@@ -401,7 +418,8 @@ class TTYBackend:
         self.__screen.keypad(True)
 
         self.__scratch: curses.window = curses.newpad(1, 1)
-        self.__pad: ScrollablePad = ScrollablePad(dims)
+        self.__drawn: QuadTree = QuadTree()
+        self.__pad: ScrollablePad = ScrollablePad(dims, self.pad_callback)
         self.__dims = maze_dims
 
         maze_box = FBox(
@@ -459,6 +477,16 @@ class TTYBackend:
         self.__screen.keypad(False)
         curses.echo()
         curses.endwin()
+
+    def pad_callback(self, rect: Rect) -> None:
+        start, end_excl = rect
+        drawn_rect = (
+            self.__tilemap.dst_coord_rev(start),
+            self.__tilemap.dst_coord_rev(end_excl - IVec2.splat(1))
+            + IVec2.splat(1),
+        )
+        self.__drawn += QuadTree.rectangle(drawn_rect)
+        pass
 
     def set_filler(self, style: int) -> None:
         if self.__filler == style:
@@ -518,6 +546,7 @@ class TTYBackend:
             key = self.__screen.getkey()
         except curses.error:
             return False
+
         match key:
             case "KEY_RESIZE":
                 self.__resize = True

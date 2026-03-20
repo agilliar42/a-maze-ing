@@ -53,7 +53,9 @@ class Cardinal(Enum):
         res = [src.tile_coords()]
         for card in path:
             nxt = src.get_neighbour(card)
-            res.append((src.tile_coords() + nxt.tile_coords()) // 2)
+            res.append(
+                (src.tile_coords() + nxt.tile_coords()) // IVec2.splat(2)
+            )
             res.append(nxt.tile_coords())
             src = nxt
         return res

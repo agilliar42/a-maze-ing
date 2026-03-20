@@ -37,31 +37,27 @@ class IVec2[T = int]:
     def innertype(self) -> Type[T]:
         return type(self.x)
 
-    def __mul__(self, other: "T | IVec2[T]") -> "IVec2[T]":
-        return self.with_op(getattr(self.innertype(), "__mul__"))(self, other)
+    def __mul__(self, other: "IVec2[T]") -> "IVec2[T]":
+        return IVec2(self.x * other.x, self.y * other.y)  # type:ignore
 
-    def __add__(self, other: "T | IVec2[T]") -> "IVec2[T]":
-        return self.with_op(getattr(self.innertype(), "__add__"))(self, other)
+    def __add__(self, other: "IVec2[T]") -> "IVec2[T]":
+        return IVec2(self.x + other.x, self.y + other.y)  # type:ignore
 
-    def __sub__(self, other: "T | IVec2[T]") -> "IVec2[T]":
-        return self.with_op(getattr(self.innertype(), "__sub__"))(self, other)
+    def __sub__(self, other: "IVec2[T]") -> "IVec2[T]":
+        return IVec2(self.x - other.x, self.y - other.y)  # type:ignore
 
-    def __floordiv__(self, other: "T| IVec2[T]") -> "IVec2[T]":
-        return self.with_op(getattr(self.innertype(), "__floordiv__"))(
-            self, other
-        )
+    def __floordiv__(self, other: "IVec2[T]") -> "IVec2[T]":
+        return IVec2(self.x // other.x, self.y // other.y)  # type:ignore
 
-    def __mod__(self, other: "T | IVec2[T]") -> "IVec2[T]":
-        return self.with_op(getattr(self.innertype(), "__mod__"))(self, other)
+    def __mod__(self, other: "IVec2[T]") -> "IVec2[T]":
+        return IVec2(self.x % other.x, self.y % other.y)  # type:ignore
 
     def __eq__(self, value: object, /) -> bool:
-        if not isinstance(value, IVec2):
-            return False
-        if self.x != value.x:
-            return False
-        if self.y != value.y:
-            return False
-        return True
+        return (
+            isinstance(value, IVec2)
+            and self.x == value.x
+            and self.y == value.y
+        )
 
     def __hash__(self) -> int:
         return hash((self.x, self.y))

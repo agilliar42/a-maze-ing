@@ -1,4 +1,6 @@
 **/__pycache__
 **/.mypy_cache
 out.prof
+prof.svg
+tmp
 .venv

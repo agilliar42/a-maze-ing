@@ -18,17 +18,6 @@ from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
 from amazeing.maze_display.backend import CloseRequested, IVec2
 from amazeing.utils import quadtree
 
-tree1 = quadtree.Tree.rectangle((IVec2(3, 3), IVec2(8, 11)))
-print(tree1)
-tree2 = quadtree.Tree.rectangle((IVec2(0, 0), IVec2(4, 8)))
-print(tree2)
-tree3 = quadtree.Tree.rectangle((IVec2(1, 1), IVec2(8, 10)))
-print(tree3)
-tree4 = tree1 | tree2
-print(tree4)
-print(tree4 & tree3)
-exit(0)
-
 config = Config.parse(open("./example.conf").read())
 
 if config.seed is not None:
@@ -81,7 +70,16 @@ def clear_backend() -> None:
             backend.draw_tile(tile)
 
 
+class Tick:
+    tick: float = time.monotonic()
+
+
 def display_maze(maze: Maze) -> None:
+    now = time.monotonic()
+    if now - Tick.tick < 0.016:
+        return
+    Tick.tick = time.monotonic()
+
     clear_backend()
     # pathfind()
     backend.set_style(full.curr_style())
