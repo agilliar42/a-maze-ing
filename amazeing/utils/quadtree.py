@@ -76,6 +76,9 @@ class Tree:
                 case (e, False, False, False):
                     res.__height -= 1
                     res.__root = e
+                case False:
+                    res.__height = 0
+                    return res
                 case _:
                     return res
 
@@ -91,7 +94,7 @@ class Tree:
             a = descend(a, depth + 1)
             return Tree.node_normalize((a, b, c, d))
 
-        res.__root = descend(self.__root)
+        res.__root = descend(res.__root)
         return res.normalized()
 
     def __or__(self, other: "Tree") -> "Tree":

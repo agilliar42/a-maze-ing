@@ -16,7 +16,7 @@ from amazeing.maze_class.maze_dirty_tracker import MazeDirtyTracker
 from amazeing.maze_class.maze_pacman_tracker import MazePacmanTracker
 from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
 from amazeing.maze_display.backend import CloseRequested, IVec2
-from amazeing.utils import quadtree
+from amazeing.utils import QuadTree
 
 config = Config.parse(open("./example.conf").read())
 

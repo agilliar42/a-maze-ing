@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator, Iterable
-import time
-from amazeing.utils import BiMap
+from amazeing.utils import BiMap, AVLTree
 from amazeing.config.config_parser import Color, Config, ColoredLine, ColorPair
 from amazeing.maze_display.layout import (
     BInt,
@@ -470,7 +469,6 @@ class TTYBackend:
         self.__filler: None | int = None
 
         self.__style_bimap: BiMap[int, IVec2] = BiMap()
-        self.__style_rename_bimap: BiMap[int, int] = BiMap()
         self.__bg_init: Callable[[IVec2], int] | None = None
 
     def __del__(self) -> None:
@@ -492,8 +490,6 @@ class TTYBackend:
         for tile in redrawn.tiles():
             if self.__style_bimap.revcontains(tile):
                 style = self.__style_bimap.revget(tile)
-                if self.__style_rename_bimap.revcontains(style):
-                    style = self.__style_rename_bimap.revget(style)
                 self.set_style(style)
                 self.draw_tile(tile)
             elif self.__bg_init is not None:
@@ -511,8 +507,8 @@ class TTYBackend:
     def set_bg_init(self, bg_init: Callable[[IVec2], int]) -> None:
         self.__bg_init = bg_init
 
-    def get_styled(self, style: int) -> set[IVec2]:
-        return self.__style_bimap.get(style)
+    def get_style_height(self, style: int) -> int:
+        return self.__style_bimap.get(style).height()
 
     def map_style_cb(self) -> Callable[[int], None]:
         curr: int | None = None
@@ -523,9 +519,9 @@ class TTYBackend:
                 curr = new
             if curr == new:
                 return
-            if len(self.get_styled(curr)) != 0:
+            if self.get_style_height(curr) != 0:
                 self.__drawn = QuadTree()
-                self.__style_rename_bimap.add(new, curr)
+                self.__style_bimap.key_map(curr, new)
             curr = new
 
         return inner

@@ -1,4 +1,5 @@
-from collections.abc import Callable
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterator
 from typing import cast
 import textwrap
 
@@ -13,6 +14,11 @@ class Tree[T]:
     def validate(self) -> None:
         if self.root is not None:
             self.root.validate()
+
+    def __iter__(self) -> Iterator[T]:
+        if self.root is None:
+            return ()
+        return iter(self.root)
 
     def append(self, value: T) -> "Leaf[T]":
         if self.root is None:
@@ -118,10 +124,13 @@ class Tree[T]:
         parent.balance_one_propagate()
 
 
-class Node[T]:
+class Node[T](ABC):
     def __init__(self, parent: "Branch[T] | Tree[T]") -> None:
         self.parent: Branch[T] | Tree[T] = parent
         self.height: int = 1
+
+    @abstractmethod
+    def __iter__(self) -> Iterator[T]: ...
 
     def validate(self) -> None:
         visited = set()
@@ -178,6 +187,12 @@ class Branch[T](Node[T]):
         self.lhs: Node[T] = lhs(self)
         self.rhs: Node[T] = rhs(self)
         self.update_height()
+
+    def __iter__(self) -> Iterator[T]:
+        for e in self.lhs:
+            yield e
+        for e in self.rhs:
+            yield e
 
     def __repr__(self) -> str:
         return (
@@ -364,6 +379,9 @@ class Leaf[T](Node[T]):
     ) -> None:
         super().__init__(parent)
         self.value: T = value
+
+    def __iter__(self) -> Iterator[T]:
+        yield self.value
 
     def __repr__(self) -> str:
         return f"leaf: {self.value}"
