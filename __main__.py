@@ -52,18 +52,17 @@ def clear_backend() -> None:
 
 
 class Tick:
-    tick: float = time.monotonic()
+    tick: float | None = None
 
 
 def display_maze(maze: Maze) -> None:
     now = time.monotonic()
-    if now - Tick.tick < 0.016:
+    if Tick.tick is not None and now - Tick.tick < 0.016:
         return
     Tick.tick = time.monotonic()
 
     clear_backend()
     # pathfind()
-    backend.set_style(full.curr_style())
 
     rewrites = {
         wall for wall in dirty_tracker.curr_dirty() if maze.get_wall(wall)
@@ -74,6 +73,7 @@ def display_maze(maze: Maze) -> None:
         if maze.check_coord(e) and maze.get_wall(e)
     }
 
+    backend.set_style(full.curr_style())
     for wall in rewrites:
         for pixel in wall.tile_coords():
             backend.draw_tile(pixel)
@@ -117,11 +117,9 @@ if config.exit is not None:
 
 pattern = Pattern(config.maze_pattern).centered_for(dims, excluded)
 pattern.fill(maze)
-
 maze.outline()
 
 walls_const = set(maze.walls_full())
-
 
 maze_make_perfect(maze, network_tracker, callback=display_maze)
 maze_make_pacman(maze, walls_const, pacman_tracker, callback=display_maze)
