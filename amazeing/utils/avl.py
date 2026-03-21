@@ -17,7 +17,7 @@ class Tree[T]:
 
     def __iter__(self) -> Iterator[T]:
         if self.root is None:
-            return ()
+            return iter(())
         return iter(self.root)
 
     def append(self, value: T) -> "Leaf[T]":

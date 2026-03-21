@@ -11,12 +11,11 @@ import random
 
 from amazeing.config.config_parser import Config
 from amazeing.maze_class.maze_network_tracker import MazeNetworkTracker
-from amazeing.maze_class.maze_coords import Cardinal, CellCoord
+from amazeing.maze_class.maze_coords import CellCoord
 from amazeing.maze_class.maze_dirty_tracker import MazeDirtyTracker
 from amazeing.maze_class.maze_pacman_tracker import MazePacmanTracker
 from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
 from amazeing.maze_display.backend import CloseRequested, IVec2
-from amazeing.utils import QuadTree
 
 config = Config.parse(open("./example.conf").read())
 

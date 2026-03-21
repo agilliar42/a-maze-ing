@@ -1,5 +1,4 @@
-from collections.abc import Callable, Generator, Iterable
-from typing import cast
+from collections.abc import Callable, Generator
 from amazeing.maze_display.backend import IVec2
 from functools import partial
 from itertools import chain
@@ -116,9 +115,9 @@ class Tree:
     def node_tiles(
         node: MaybeNode, pos: IVec2, height: int
     ) -> Generator[IVec2]:
-        if height == 0 and node == True:
+        if height == 0 and node is True:
             yield pos
-        if height == 0 or node == False:
+        if height == 0 or node is False:
             return
         for pos, node in zip4(
             Tree.node_starts(pos, height), Tree.node_split(node)

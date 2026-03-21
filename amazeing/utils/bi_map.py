@@ -11,7 +11,7 @@ class BiMap[K, R]:
         if self.revcontains(revkey):
             self.revremove(revkey)
         if not self.contains(key):
-            tree = AVLTree()
+            tree = AVLTree[R]()
             self.__map[key] = tree
             self.__revmap[tree] = key
         self.__leafmap[revkey] = self.__map[key].append(revkey)
@@ -40,7 +40,7 @@ class BiMap[K, R]:
         if src not in self.__map:
             return
         if dst not in self.__map:
-            tree = AVLTree()
+            tree = AVLTree[R]()
             self.__map[dst] = tree
             self.__revmap[tree] = dst
         self.__map[dst].rjoin(self.__map.pop(src))

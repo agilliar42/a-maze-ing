@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator, Iterable
-from amazeing.utils import BiMap, AVLTree
+from amazeing.utils import BiMap
 from amazeing.config.config_parser import Color, Config, ColoredLine, ColorPair
 from amazeing.maze_display.layout import (
     BInt,
