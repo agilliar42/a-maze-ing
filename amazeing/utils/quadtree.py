@@ -1,5 +1,5 @@
 from collections.abc import Callable, Generator
-from amazeing.maze_display.backend import IVec2
+from .ivec2 import IVec2
 from functools import partial
 from itertools import chain
 

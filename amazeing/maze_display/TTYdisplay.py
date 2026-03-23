@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator, Iterable
+from dataclasses import dataclass
 from amazeing.utils import BiMap
 from amazeing.config.config_parser import Color, Config, ColoredLine, ColorPair
 from amazeing.maze_display.layout import (
@@ -14,13 +15,17 @@ from amazeing.maze_display.layout import (
     layout_sort_chunked,
     layout_split,
 )
-from amazeing.utils import Rect, QuadTree
-from .backend import IVec2, BackendEvent, KeyboardInput
+from amazeing.utils import Rect, QuadTree, IVec2
 import curses
 
 
 class BackendException(Exception):
     pass
+
+
+@dataclass
+class KeyboardInput:
+    sym: str
 
 
 class ITile(ABC):
@@ -552,7 +557,7 @@ class TTYBackend:
         self.__layout.laid_out(IVec2(0, 0), IVec2(x, y))
         self.__scratch.overwrite(self.__screen)
 
-    def event(self, timeout_ms: int = -1) -> BackendEvent | bool:
+    def event(self, timeout_ms: int = -1) -> KeyboardInput | bool:
         self.__screen.timeout(timeout_ms)
         try:
             key = self.__screen.getkey()

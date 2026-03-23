@@ -1,5 +1,5 @@
-from amazeing.maze_class.maze import Maze
-from amazeing.maze_class.maze_coords import (
+from amazeing.maze import Maze
+from amazeing.maze.maze_coords import (
     SplitWall,
     WallCoord,
     split_wall_ccw,

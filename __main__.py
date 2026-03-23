@@ -10,12 +10,14 @@ import random
 
 
 from amazeing.config.config_parser import Config
-from amazeing.maze_class.maze_network_tracker import MazeNetworkTracker
-from amazeing.maze_class.maze_coords import CellCoord
-from amazeing.maze_class.maze_dirty_tracker import MazeDirtyTracker
-from amazeing.maze_class.maze_pacman_tracker import MazePacmanTracker
+from amazeing.maze import (
+    MazeNetworkTracker,
+    CellCoord,
+    MazeDirtyTracker,
+    MazePacmanTracker,
+)
 from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
-from amazeing.maze_display.backend import CloseRequested, IVec2
+from amazeing.utils import IVec2
 
 config = Config.parse(open("./example.conf").read())
 
@@ -98,7 +100,7 @@ def poll_events(timeout_ms: int = -1) -> None:
             if timeout() == 0 and not event:
                 return
             continue
-        if isinstance(event, CloseRequested) or event.sym == "q":
+        if event.sym == "q":
             exit(0)
         if event.sym == "c":
             filler.cycle()

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from .backend import IVec2
+from amazeing.utils import IVec2
 
 
 class BInt:

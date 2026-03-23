@@ -1,8 +1,8 @@
 from typing import Callable
-from amazeing import Maze, WallCoord
+from amazeing.maze import Maze, WallCoord
 import random
 
-from amazeing.maze_class.maze_pacman_tracker import MazePacmanTracker
+from amazeing.maze import MazePacmanTracker
 
 
 def maze_make_pacman(

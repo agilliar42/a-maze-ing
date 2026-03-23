@@ -1,6 +1,6 @@
 from collections.abc import Callable
-from amazeing.maze_class.maze import Maze
-from amazeing.maze_class.maze_coords import WallCoord
+from amazeing.maze import Maze
+from amazeing.maze import WallCoord
 import random
 
 

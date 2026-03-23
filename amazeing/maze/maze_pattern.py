@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Generator, Callable
-from amazeing.maze_display.backend import IVec2
+from amazeing.utils import IVec2
 from .maze import Maze
 from .maze_coords import CellCoord
 

@@ -1,5 +1,5 @@
 from typing import Callable, Generator, Iterable
-from amazeing.maze_display.backend import IVec2
+from amazeing.utils import IVec2
 from .maze_coords import (
     CellCoord,
     Orientation,

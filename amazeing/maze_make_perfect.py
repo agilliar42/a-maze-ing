@@ -1,8 +1,8 @@
 from typing import Callable
-from amazeing import Maze
+from amazeing.maze import Maze
 import random
 
-from amazeing.maze_class.maze_network_tracker import MazeNetworkTracker
+from amazeing.maze import MazeNetworkTracker
 
 
 def maze_make_perfect(
