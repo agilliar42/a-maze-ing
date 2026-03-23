@@ -3,7 +3,7 @@ from collections.abc import Callable, Generator, Iterable
 from dataclasses import dataclass
 from amazeing.utils import BiMap
 from amazeing.config.config_parser import Color, Config, ColoredLine, ColorPair
-from amazeing.maze_display.layout import (
+from amazeing.display.layout import (
     BInt,
     Box,
     DBox,

@@ -1,11 +1,9 @@
 import time
-from amazeing import (
+from amazeing.maze import (
     Maze,
-    TTYBackend,
     Pattern,
-    maze_make_pacman,
-    maze_make_perfect,
 )
+from amazeing.display import TTYBackend
 import random
 
 
@@ -15,8 +13,10 @@ from amazeing.maze import (
     CellCoord,
     MazeDirtyTracker,
     MazePacmanTracker,
+    maze_make_pacman,
+    maze_make_perfect,
 )
-from amazeing.maze_display.TTYdisplay import TileCycle, TileMaps, extract_pairs
+from amazeing.display import TileCycle, TileMaps, extract_pairs
 from amazeing.utils import IVec2
 
 config = Config.parse(open("./example.conf").read())
