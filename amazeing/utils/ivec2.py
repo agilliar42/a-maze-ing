@@ -3,6 +3,8 @@ from typing import Type, cast
 
 
 class IVec2[T = int]:
+    __slots__: tuple[str, str] = ("x", "y")
+
     def copy(self, inner_copy: Callable[[T], T] = lambda e: e) -> "IVec2[T]":
         return IVec2(inner_copy(self.x), inner_copy(self.y))
 
@@ -17,20 +19,12 @@ class IVec2[T = int]:
     def __repr__(self) -> str:
         return f"{self.x, self.y}"
 
-    @staticmethod
     def with_op[T2](
-        op: Callable[[T, T], T2],
-    ) -> Callable[["IVec2[T]", "T | IVec2[T]"], "IVec2[T2]"]:
-        return lambda self, other: IVec2(
-            op(
-                self.x,
-                (
-                    other
-                    if isinstance(other, IVec2)
-                    else (other := type(self).splat(other))
-                ).x,
-            ),
-            op(self.y, cast(IVec2[T], other).y),
+        self, op: Callable[[T, T], T2], other: "IVec2[T]"
+    ) -> "IVec2[T2]":
+        return IVec2(
+            op(self.x, other.x),
+            op(self.y, other.y),
         )
 
     def innertype(self) -> Type[T]:
@@ -60,6 +54,12 @@ class IVec2[T = int]:
 
     def __hash__(self) -> int:
         return hash((self.x, self.y))
+
+    def lane_min(self, other: "IVec2[T]") -> "IVec2[T]":
+        return IVec2(min(self.x, other.x), min(self.y, other.y))  # type:ignore
+
+    def lane_max(self, other: "IVec2[T]") -> "IVec2[T]":
+        return IVec2(max(self.x, other.x), max(self.y, other.y))  # type:ignore
 
     def xy(self) -> tuple[T, T]:
         return (self.x, self.y)

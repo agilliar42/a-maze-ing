@@ -1,7 +1,6 @@
 from collections.abc import Iterable, Generator, Callable
-from amazeing.utils import IVec2
-from .maze import Maze
-from .maze_coords import CellCoord
+from amazeing.utils import IVec2, CellCoord
+from amazeing.maze import Maze
 
 
 class Pattern:

@@ -1,10 +1,10 @@
 from collections.abc import Callable
 from amazeing.maze import Maze
-from amazeing.maze import WallCoord
+from amazeing.utils import WallCoord
 import random
 
 
-def maze_make_empty(
+def make_empty(
     maze: Maze,
     walls_const: set[WallCoord],
     callback: Callable[[Maze], None] = lambda _: None,

@@ -1,9 +1,9 @@
 from collections.abc import Iterable
 from amazeing.maze import Maze
-from amazeing.maze import WallCoord
+from amazeing.utils import WallCoord
 
 
-class MazeDirtyTracker:
+class DirtyTracker:
     def __init__(self, maze: Maze) -> None:
         self.__maze: Maze = maze
         self.__dirty: set[WallCoord] = set()

@@ -1,11 +1,11 @@
 from amazeing.maze import Maze
-from amazeing.maze.maze_coords import (
-    SplitWall,
-    WallCoord,
+from amazeing.utils.coords import (
     split_wall_ccw,
     split_wall_opposite,
 )
-from amazeing.utils import AVLTree, AVLLeaf
+from amazeing.utils import AVLTree, AVLLeaf, SplitWall, WallCoord
+from amazeing.utils.avl import BVHKey
+from amazeing.utils.quadtree import Rect
 
 
 class NetworkID:
@@ -24,8 +24,8 @@ class DualForest:
         self,
     ) -> None:
         # Trees are left hand chiral
-        self.__trees: set[AVLTree[SplitWall]] = set()
-        self.__revmap: dict[SplitWall, AVLLeaf[SplitWall]] = {}
+        self.__trees: set[AVLTree[BVHKey, SplitWall]] = set()
+        self.__revmap: dict[SplitWall, AVLLeaf[BVHKey, SplitWall]] = {}
 
     def __repr__(self) -> str:
         return (
@@ -48,10 +48,10 @@ class DualForest:
         if self.get_wall(wall):
             return
         a_wall, b_wall = wall.to_split_wall()
-        a_tree = AVLTree[SplitWall]()
-        b_tree = AVLTree[SplitWall]()
-        self.__revmap[a_wall] = a_tree.append(a_wall)
-        self.__revmap[b_wall] = b_tree.append(b_wall)
+        a_tree = AVLTree[BVHKey, SplitWall]()
+        b_tree = AVLTree[BVHKey, SplitWall]()
+        self.__revmap[a_wall] = a_tree.append(BVHKey.for_wall(a_wall), a_wall)
+        self.__revmap[b_wall] = b_tree.append(BVHKey.for_wall(b_wall), b_wall)
 
         match (self.find_split(a_wall), self.find_split(b_wall)):
             case (None, None):
@@ -66,7 +66,9 @@ class DualForest:
                 lhs, rhs = b_leaf.split_up()
                 lhs.rjoin(a_tree)
                 lhs.rjoin(b_tree)
-                self.__revmap[b_split] = lhs.append(b_split)
+                self.__revmap[b_split] = lhs.append(
+                    BVHKey.for_wall(b_split), b_split
+                )
                 lhs.rjoin(rhs)
                 self.__trees.add(lhs)
             case (a_split, None):
@@ -78,7 +80,9 @@ class DualForest:
                 lhs, rhs = a_leaf.split_up()
                 lhs.rjoin(b_tree)
                 lhs.rjoin(a_tree)
-                self.__revmap[a_split] = lhs.append(a_split)
+                self.__revmap[a_split] = lhs.append(
+                    BVHKey.for_wall(a_split), a_split
+                )
                 lhs.rjoin(rhs)
                 self.__trees.add(lhs)
             case (a_split, b_split):
@@ -92,11 +96,15 @@ class DualForest:
                     self.__trees.remove(a_leaf.root())
                     lhs, rhs = a_leaf.split_up()
                     lhs.rjoin(b_tree)
-                    self.__revmap[a_split] = rhs.prepend(a_split)
+                    self.__revmap[a_split] = rhs.prepend(
+                        BVHKey.for_wall(a_split), a_split
+                    )
                     rhs.ljoin(a_tree)
                     rhs.rjoin(lhs)
                     lhs, rhs = b_leaf.split_up()
-                    self.__revmap[b_split] = rhs.prepend(b_split)
+                    self.__revmap[b_split] = rhs.prepend(
+                        BVHKey.for_wall(b_split), b_split
+                    )
                     self.__trees.add(lhs)
                     self.__trees.add(rhs)
                 else:
@@ -104,8 +112,12 @@ class DualForest:
                     self.__trees.remove(b_leaf.root())
                     a_lhs, a_rhs = a_leaf.split_up()
                     b_lhs, b_rhs = b_leaf.split_up()
-                    self.__revmap[a_split] = a_rhs.prepend(a_split)
-                    self.__revmap[b_split] = b_rhs.prepend(b_split)
+                    self.__revmap[a_split] = a_rhs.prepend(
+                        BVHKey.for_wall(a_split), a_split
+                    )
+                    self.__revmap[b_split] = b_rhs.prepend(
+                        BVHKey.for_wall(b_split), b_split
+                    )
                     res = a_lhs
                     res.rjoin(b_tree)
                     res.rjoin(b_rhs)
@@ -133,7 +145,7 @@ class DualForest:
             self.__trees.remove(b_leaf.root())
             a_lhs, a_rhs = a_leaf.split_up()
             b_lhs, b_rhs = b_leaf.split_up()
-            res = AVLTree[SplitWall]()
+            res = AVLTree[BVHKey, SplitWall]()
             res.rjoin(a_lhs)
             res.rjoin(b_rhs)
             res.rjoin(b_lhs)
@@ -144,6 +156,16 @@ class DualForest:
     def get_wall(self, wall: WallCoord) -> bool:
         a_wall, b_wall = wall.to_split_wall()
         return a_wall in self.__revmap and b_wall in self.__revmap
+
+    def contour_bound(self, wall: SplitWall) -> Rect | None:
+        if wall not in self.__revmap:
+            return None
+        leaf = self.__revmap[wall]
+        parent = leaf.root()
+        print(parent)
+        if parent.root is None:
+            raise Exception()
+        return parent.root.key.rect
 
     def wall_bisects(self, wall: WallCoord) -> bool:
         a_wall, b_wall = wall.to_split_wall()
@@ -158,7 +180,7 @@ class DualForest:
             return a_leaf.root() is b_leaf.root()
 
 
-class MazeNetworkTracker:
+class NetworkTracker:
     def __init__(self, maze: Maze) -> None:
         self.__maze: Maze = maze
         self.__forest: DualForest = DualForest()
@@ -175,6 +197,9 @@ class MazeNetworkTracker:
 
     def wall_bisects(self, wall: WallCoord) -> bool:
         return self.__forest.wall_bisects(wall)
+
+    def contour_bound(self, wall: SplitWall) -> Rect | None:
+        return self.__forest.contour_bound(wall)
 
     def end(self) -> None:
         self.__maze.observers.discard(self.__observer)

@@ -8,16 +8,17 @@ import random
 
 
 from amazeing.config.config_parser import Config
+from amazeing.utils import CellCoord
 from amazeing.maze import (
-    MazeNetworkTracker,
-    CellCoord,
-    MazeDirtyTracker,
-    MazePacmanTracker,
-    maze_make_pacman,
-    maze_make_perfect,
+    NetworkTracker,
+    DirtyTracker,
+    PacmanTracker,
+    make_pacman,
+    make_perfect,
 )
 from amazeing.display import TileCycle, TileMaps, extract_pairs
 from amazeing.utils import IVec2
+from amazeing.utils.coords import Cardinal
 
 config = Config.parse(open("./example.conf").read())
 
@@ -28,9 +29,9 @@ dims = IVec2(config.width, config.height)
 
 maze = Maze(dims)
 
-dirty_tracker = MazeDirtyTracker(maze)
-pacman_tracker = MazePacmanTracker(maze)
-network_tracker = MazeNetworkTracker(maze)
+dirty_tracker = DirtyTracker(maze)
+pacman_tracker = PacmanTracker(maze)
+network_tracker = NetworkTracker(maze)
 
 backend = TTYBackend(dims, config.tilemap_wall_size, config.tilemap_cell_size)
 pair_map = extract_pairs(config)
@@ -123,18 +124,21 @@ maze.outline()
 
 walls_const = set(maze.walls_full())
 
-maze_make_perfect(maze, network_tracker, callback=display_maze)
-maze_make_pacman(maze, walls_const, pacman_tracker, callback=display_maze)
+make_perfect(maze, network_tracker, callback=display_maze)
+make_pacman(maze, walls_const, pacman_tracker, callback=display_maze)
 
 
 # pathfind()
 
 while False:
-    maze_make_perfect(maze, network_tracker, callback=display_maze)
+    make_perfect(maze, network_tracker, callback=display_maze)
     # poll_events(200)
-    maze_make_pacman(maze, walls_const, callback=display_maze)
+    make_pacman(maze, walls_const, callback=display_maze)
     # maze_make_empty(maze, walls_const, callback=display_maze)
     # poll_events(200)
     # maze._rebuild()
-while True:
+while False:
     poll_events(16)
+
+backend.uninit()
+print(network_tracker.contour_bound((CellCoord(0, 1), Cardinal.EAST)))

@@ -1,14 +1,15 @@
 from typing import Callable
-from amazeing.maze import Maze, WallCoord
+from amazeing.maze import Maze
+from amazeing.utils import WallCoord
 import random
 
-from amazeing.maze import MazePacmanTracker
+from amazeing.maze import PacmanTracker
 
 
-def maze_make_pacman(
+def make_pacman(
     maze: Maze,
     walls_const: set[WallCoord],
-    pacman_tracker: MazePacmanTracker,
+    pacman_tracker: PacmanTracker,
     callback: Callable[[Maze], None] = lambda _: None,
     iterations: int = 10,
 ) -> None:

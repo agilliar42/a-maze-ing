@@ -2,12 +2,12 @@ from typing import Callable
 from amazeing.maze import Maze
 import random
 
-from amazeing.maze import MazeNetworkTracker
+from amazeing.maze import NetworkTracker
 
 
-def maze_make_perfect(
+def make_perfect(
     maze: Maze,
-    tracker: MazeNetworkTracker,
+    tracker: NetworkTracker,
     callback: Callable[[Maze], None] = lambda _: None,
 ) -> None:
     empty = list(maze.walls_empty())

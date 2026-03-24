@@ -201,9 +201,9 @@ class MazeTileMap:
 
     def dst_coord_rev(self, pixel: IVec2) -> IVec2:
         mod = self.__wall_dim + self.__cell_dim
-        return (pixel // mod) * IVec2.splat(2) + IVec2[int].with_op(
-            lambda a, b: 0 if a < b else 1
-        )(pixel % mod, self.__wall_dim)
+        return (pixel // mod) * IVec2.splat(2) + (pixel % mod).with_op(
+            lambda a, b: 0 if a < b else 1, self.__wall_dim
+        )
 
     def tile_size(self, pos: IVec2) -> IVec2:
         return (pos + IVec2.splat(1)) % IVec2.splat(
@@ -247,21 +247,17 @@ class ScrollablePad:
         return IVec2(x, y)
 
     def clamp(self, dims: IVec2) -> None:
-        self.__pos = IVec2.with_op(min)(
-            IVec2.with_op(max)(self.__pos, dims - self.dims()), IVec2.splat(0)
+        self.__pos = self.__pos.lane_max(dims - self.dims()).lane_min(
+            IVec2.splat(0)
         )
 
     def present(self, at: IVec2, into: IVec2, window: curses.window) -> None:
         if self.constrained:
             self.clamp(into)
 
-        pad_start = IVec2.with_op(max)(
-            IVec2.splat(0) - self.__pos, IVec2.splat(0)
-        )
-        win_start = IVec2.with_op(max)(self.__pos, IVec2.splat(0))
-        draw_dim = IVec2.with_op(min)(
-            self.dims() - pad_start, into - win_start
-        )
+        pad_start = (IVec2.splat(0) - self.__pos).lane_max(IVec2.splat(0))
+        win_start = self.__pos.lane_max(IVec2.splat(0))
+        draw_dim = (self.dims() - pad_start).lane_min(into - win_start)
         if draw_dim.x <= 0 or draw_dim.y <= 0:
             return
         draw_start = at + win_start
@@ -433,11 +429,13 @@ class TTYBackend:
 
         self.__filler_boxes: list[DBox] = []
 
-        def filler_box() -> Box:
+        def filler_box(
+            dims: IVec2[BInt] = IVec2(BInt(0, True), BInt(0, True))
+        ) -> Box:
             self.__filler_boxes.append(
                 res := DBox(
                     FBox(
-                        IVec2(BInt(0, True), BInt(0, True)),
+                        dims,
                         lambda at, into: (
                             None
                             if self.__filler is None
@@ -476,7 +474,15 @@ class TTYBackend:
         self.__style_bimap: BiMap[int, IVec2] = BiMap()
         self.__bg_init: Callable[[IVec2], int] | None = None
 
+        self.__uninit: bool = False
+
     def __del__(self) -> None:
+        self.uninit()
+
+    def uninit(self) -> None:
+        if self.__uninit:
+            return
+        self.__uninit = True
         curses.curs_set(1)
         curses.nocbreak()
         self.__screen.keypad(False)

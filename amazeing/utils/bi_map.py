@@ -1,20 +1,24 @@
-from .avl import Tree as AVLTree, Leaf as AVLLeaf
+from amazeing.utils.avl import (
+    Tree as AVLTree,
+    Leaf as AVLLeaf,
+    NoopKey as AVLNoopKey,
+)
 
 
 class BiMap[K, R]:
     def __init__(self) -> None:
-        self.__map: dict[K, AVLTree[R]] = {}
-        self.__revmap: dict[AVLTree[R], K] = {}
-        self.__leafmap: dict[R, AVLLeaf[R]] = {}
+        self.__map: dict[K, AVLTree[AVLNoopKey, R]] = {}
+        self.__revmap: dict[AVLTree[AVLNoopKey, R], K] = {}
+        self.__leafmap: dict[R, AVLLeaf[AVLNoopKey, R]] = {}
 
     def add(self, key: K, revkey: R) -> None:
         if self.revcontains(revkey):
             self.revremove(revkey)
         if not self.contains(key):
-            tree = AVLTree[R]()
+            tree = AVLTree[AVLNoopKey, R]()
             self.__map[key] = tree
             self.__revmap[tree] = key
-        self.__leafmap[revkey] = self.__map[key].append(revkey)
+        self.__leafmap[revkey] = self.__map[key].append(AVLNoopKey(), revkey)
 
     def remove(self, key: K) -> None:
         for revkey in self.__map[key]:
@@ -28,7 +32,7 @@ class BiMap[K, R]:
         if root.height() == 0:
             self.__map.pop(self.__revmap.pop(root))
 
-    def get(self, key: K) -> AVLTree[R]:
+    def get(self, key: K) -> AVLTree[AVLNoopKey, R]:
         return self.__map[key] if self.contains(key) else AVLTree()
 
     def revget(self, revkey: R) -> K:
@@ -40,7 +44,7 @@ class BiMap[K, R]:
         if src not in self.__map:
             return
         if dst not in self.__map:
-            tree = AVLTree[R]()
+            tree = AVLTree[AVLNoopKey, R]()
             self.__map[dst] = tree
             self.__revmap[tree] = dst
         self.__map[dst].rjoin(self.__map.pop(src))

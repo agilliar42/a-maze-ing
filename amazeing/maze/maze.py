@@ -1,9 +1,9 @@
 from typing import Callable, Generator, Iterable
-from amazeing.utils import IVec2
-from .maze_coords import (
+from amazeing.utils import (
     CellCoord,
     Orientation,
     WallCoord,
+    IVec2,
 )
 
 type MazeObserver = Callable[[WallCoord], None]

@@ -5,7 +5,7 @@ install:
 	python -m venv .venv
 
 venv_bash: .venv
-	bash --init-file <(echo ". ~/.bashrc; source .venv/bin/activate")
+	bash --init-file <(echo ". ~/.bashrc; export TERM=xterm-256color; . .venv/bin/activate")
 
 run:
 

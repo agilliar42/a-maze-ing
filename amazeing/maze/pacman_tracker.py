@@ -1,10 +1,9 @@
 from collections.abc import Iterable
 from amazeing.maze import Maze
-from amazeing.maze import WallCoord
-from amazeing.utils.randset import Randset
+from amazeing.utils import Randset, WallCoord
 
 
-class MazePacmanTracker:
+class PacmanTracker:
     def __init__(self, maze: Maze) -> None:
         self.__maze: Maze = maze
         self.__dirty: Randset[WallCoord] = Randset()
