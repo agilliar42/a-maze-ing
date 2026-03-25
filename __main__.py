@@ -57,6 +57,7 @@ def clear_backend() -> None:
 
 class Tick:
     tick: float | None = None
+    prev_path: list[Cardinal] | None = None
 
 
 def display_path() -> None:
@@ -65,6 +66,13 @@ def display_path() -> None:
     path = pathfind_astar(
         maze, network_tracker, CellCoord(config.entry), CellCoord(config.exit)
     )
+    if Tick.prev_path is not None:
+        if Tick.prev_path == path:
+            return
+        backend.set_style(empty_style.curr_style())
+        for tile in path_pixels(CellCoord(config.entry), Tick.prev_path):
+            backend.draw_tile(tile)
+    Tick.prev_path = path
     if path is not None:
         backend.set_style(path_style.curr_style())
         for tile in path_pixels(CellCoord(config.entry), path):
@@ -78,7 +86,6 @@ def display_maze(maze: Maze) -> None:
     Tick.tick = time.monotonic()
 
     clear_backend()
-    backend.map_style(path_style.curr_style(), empty_style.curr_style())
     display_path()
 
     rewrites = {
