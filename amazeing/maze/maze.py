@@ -40,6 +40,9 @@ class Maze:
     def all_cells(self) -> Iterable[CellCoord]:
         return CellCoord(self.__dims).all_up_to()
 
+    def check_cell(self, cell: CellCoord) -> bool:
+        return self.__dims.x > cell.x and self.__dims.y > cell.y
+
     def check_coord(self, coord: WallCoord) -> bool:
         if coord.a < 0 or coord.b < 0:
             return False

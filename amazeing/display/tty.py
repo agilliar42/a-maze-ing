@@ -521,6 +521,13 @@ class TTYBackend:
     def get_style_height(self, style: int) -> int:
         return self.__style_bimap.get(style).height()
 
+    def map_style(self, src: int, dst: int) -> None:
+        if src == dst:
+            return
+        if self.get_style_height(src) != 0:
+            self.__drawn = QuadTree()
+            self.__style_bimap.key_map(src, dst)
+
     def map_style_cb(self) -> Callable[[int], None]:
         curr: int | None = None
 
@@ -528,11 +535,7 @@ class TTYBackend:
             nonlocal curr
             if curr is None:
                 curr = new
-            if curr == new:
-                return
-            if self.get_style_height(curr) != 0:
-                self.__drawn = QuadTree()
-                self.__style_bimap.key_map(curr, new)
+            self.map_style(curr, new)
             curr = new
 
         return inner

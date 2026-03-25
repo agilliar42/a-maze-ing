@@ -8,10 +8,6 @@ from amazeing.utils.avl import BVHKey
 from amazeing.utils.quadtree import Rect
 
 
-class NetworkID:
-    pass
-
-
 class DualForest:
     """
     A forest of trees that contour networks
