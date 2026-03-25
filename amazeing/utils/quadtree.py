@@ -24,7 +24,7 @@ type MaybeNode = Node | bool
 type Rect = tuple[IVec2, IVec2]
 
 
-def rect_collide(a: Rect, b: Rect) -> bool:
+def rects_overlap(a: Rect, b: Rect) -> bool:
     a_start, a_end = a
     b_start, b_end = b
     return (
@@ -32,6 +32,16 @@ def rect_collide(a: Rect, b: Rect) -> bool:
         and a_end.y > b_start.y
         and b_end.x > a_start.x
         and b_end.y > a_start.y
+    )
+
+
+def rect_collides(a: Rect, b: IVec2) -> bool:
+    a_start, a_end = a
+    return (
+        a_end.x > b.x
+        and a_end.y > b.y
+        and b.x >= a_start.x
+        and b.y >= a_start.y
     )
 
 
@@ -171,7 +181,7 @@ class Tree:
         node_rect = Tree.node_rect(pos, height)
         if rect_contains(rect, node_rect):
             return True
-        if not rect_collide(rect, node_rect):
+        if not rects_overlap(rect, node_rect):
             return False
         starts = Tree.node_starts(pos, height)
         return map4(

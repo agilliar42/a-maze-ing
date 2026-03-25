@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 from amazeing.maze import Maze
 from amazeing.utils import WallCoord
 
@@ -23,7 +22,7 @@ class DirtyTracker:
         self.__dirty = set()
         return res
 
-    def curr_dirty(self) -> Iterable[WallCoord]:
+    def curr_dirty(self) -> set[WallCoord]:
         return self.__dirty
 
     def end(self) -> None:

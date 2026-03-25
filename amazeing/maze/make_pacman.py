@@ -1,4 +1,3 @@
-from typing import Callable
 from amazeing.maze import Maze
 from amazeing.utils import WallCoord
 import random
@@ -10,7 +9,6 @@ def make_pacman(
     maze: Maze,
     walls_const: set[WallCoord],
     pacman_tracker: PacmanTracker,
-    callback: Callable[[Maze], None] = lambda _: None,
     iterations: int = 10,
 ) -> None:
     for _ in range(0, iterations):
@@ -31,6 +29,5 @@ def make_pacman(
                 maze.set_wall(wall, False)
                 maze.set_wall(random.choice(leaf_neighbours), True)
             n += 1
-            callback(maze)
         if n == 0:
             break

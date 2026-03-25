@@ -6,6 +6,8 @@ from amazeing.utils.coords import Cardinal, CellCoord
 from amazeing.utils.ivec2 import IVec2
 import heapq
 
+from amazeing.utils.quadtree import rect_collides
+
 
 def taxicab_distance(a: IVec2, b: IVec2) -> int:
     return sum(a.with_op(lambda lhs, rhs: abs(lhs - rhs), b).xy())
@@ -47,25 +49,23 @@ class AStarStep:
         return res
 
 
-def pathfind_astar(
-    maze: Maze, network_tracker: NetworkTracker, src: CellCoord, dst: CellCoord
-) -> list[Cardinal] | None:
+def pathfind_astar(maze: Maze) -> list[Cardinal] | None:
+    src = maze.entry
+    dst = maze.exit
     queue = [AStarStep(src, None, 0, taxicab_distance(src, dst))]
     heapq.heapify(queue)
-    visited = set()
+    visited = {src}
     while len(queue) > 0:
         curr = heapq.heappop(queue)
-        if curr.dst in visited:
-            continue
         if curr.dst == dst:
             return curr.to_path()
-        visited.add(curr.dst)
         for card in Cardinal.all():
             if maze.get_wall(curr.dst.get_wall(card)):
                 continue
             nxt = curr.append(card, dst)
-            if not nxt.ends_in_bounds(maze):
+            if nxt.dst in visited or not nxt.ends_in_bounds(maze):
                 continue
+            visited.add(nxt.dst)
             heapq.heappush(queue, nxt)
     return None
 

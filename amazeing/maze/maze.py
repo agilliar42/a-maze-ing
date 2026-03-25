@@ -1,4 +1,5 @@
 from typing import Callable, Generator, Iterable
+from amazeing.config.config_parser import Config
 from amazeing.utils import (
     CellCoord,
     Orientation,
@@ -10,9 +11,19 @@ type MazeObserver = Callable[[WallCoord], None]
 
 
 class Maze:
-    def __init__(self, dims: IVec2) -> None:
-        self.__dims = dims
+    def __init__(self, config: Config) -> None:
+        self.dims = IVec2(config.width, config.height)
         self.observers: set[MazeObserver] = set()
+        self.entry: CellCoord = (
+            CellCoord(0, 0)
+            if config.entry is None
+            else CellCoord(config.entry)
+        )
+        self.exit: CellCoord = (
+            CellCoord(self.dims - IVec2.splat(1))
+            if config.exit is None
+            else CellCoord(config.exit)
+        )
         self.__walls_full: dict[WallCoord, None] = {}
 
     def get_wall(self, coord: WallCoord) -> bool:
@@ -30,26 +41,26 @@ class Maze:
 
     def all_walls(self) -> Generator[WallCoord]:
         for orientation, a_count, b_count in [
-            (Orientation.HORIZONTAL, self.__dims.y + 1, self.__dims.x),
-            (Orientation.VERTICAL, self.__dims.x + 1, self.__dims.y),
+            (Orientation.HORIZONTAL, self.dims.y + 1, self.dims.x),
+            (Orientation.VERTICAL, self.dims.x + 1, self.dims.y),
         ]:
             for a in range(0, a_count):
                 for b in range(0, b_count):
                     yield WallCoord(orientation, a, b)
 
     def all_cells(self) -> Iterable[CellCoord]:
-        return CellCoord(self.__dims).all_up_to()
+        return CellCoord(self.dims).all_up_to()
 
     def check_cell(self, cell: CellCoord) -> bool:
-        return self.__dims.x > cell.x and self.__dims.y > cell.y
+        return self.dims.x > cell.x and self.dims.y > cell.y
 
     def check_coord(self, coord: WallCoord) -> bool:
         if coord.a < 0 or coord.b < 0:
             return False
         (a_max, b_max) = (
-            (self.__dims.y, self.__dims.x - 1)
+            (self.dims.y, self.dims.x - 1)
             if coord.orientation == Orientation.HORIZONTAL
-            else (self.__dims.x, self.__dims.y - 1)
+            else (self.dims.x, self.dims.y - 1)
         )
         if coord.a > a_max or coord.b > b_max:
             return False
@@ -62,18 +73,18 @@ class Maze:
         return self.get_walls_checked(id.neighbours())
 
     def outline(self) -> None:
-        if self.__dims.x < 1 or self.__dims.y < 1:
+        if self.dims.x < 1 or self.dims.y < 1:
             return
         for orientation, a_iter, b_iter in [
             (
                 Orientation.VERTICAL,
-                (0, self.__dims.x),
-                range(0, self.__dims.y),
+                (0, self.dims.x),
+                range(0, self.dims.y),
             ),
             (
                 Orientation.HORIZONTAL,
-                (0, self.__dims.y),
-                range(0, self.__dims.x),
+                (0, self.dims.y),
+                range(0, self.dims.x),
             ),
         ]:
             for a in a_iter:

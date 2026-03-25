@@ -1,6 +1,9 @@
 from amazeing.maze import Maze
 from amazeing.utils.coords import (
+    Cardinal,
+    CellCoord,
     split_wall_ccw,
+    split_wall_cw,
     split_wall_opposite,
 )
 from amazeing.utils import AVLTree, AVLLeaf, SplitWall, WallCoord
@@ -158,7 +161,6 @@ class DualForest:
             return None
         leaf = self.__revmap[wall]
         parent = leaf.root()
-        print(parent)
         if parent.root is None:
             raise Exception()
         return parent.root.key.rect
