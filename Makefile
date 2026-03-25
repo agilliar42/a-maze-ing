@@ -7,6 +7,10 @@ install:
 venv_bash: .venv
 	bash --init-file <(echo ". ~/.bashrc; export TERM=xterm-256color; . .venv/bin/activate")
 
+run-prof:
+	python -m cProfile -o out.prof __main__.py
+	flameprof out.prof > prof.svg
+
 run:
 
 clean:
