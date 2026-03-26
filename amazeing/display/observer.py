@@ -78,6 +78,11 @@ class TTYTracker:
                 self.full_style.cycle()
                 self.path_style.cycle()
                 self.empty_style.cycle()
+            if event.sym == "v":
+                self.filler_style.cycle(-1)
+                self.full_style.cycle(-1)
+                self.path_style.cycle(-1)
+                self.empty_style.cycle(-1)
             else:
                 continue
 

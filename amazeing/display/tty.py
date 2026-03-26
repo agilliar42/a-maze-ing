@@ -291,7 +291,7 @@ def extract_pairs(
             config.tilemap_background,
         )
         for e in tilemaps
-    ] + [config.tilemap_box]
+    ] + [config.tilemap_box, config.prompt]
     pairs = {
         pair
         for tilemap in all_tilemaps
@@ -397,6 +397,7 @@ class TileMaps:
                 x += width
             self.box.append(line)
             y += height
+        self.prompt: int = add_style(config.prompt, config.prompt_size)
 
 
 class TileCycle[T]:
@@ -411,7 +412,7 @@ class TileCycle[T]:
         cb(styles[i])
 
     def cycle(self, by: int = 1) -> None:
-        new = (self.__i + by) % len(self.__styles)
+        new = abs((self.__i + by) % len(self.__styles))
         if new != self.__i:
             self.__cb(self.__styles[new])
         self.__i = new
@@ -436,6 +437,7 @@ class TTYBackend:
             self.__dims * IVec2.splat(2) + IVec2.splat(1)
         )
 
+        self.__uninit: bool = False
         self.__screen: curses.window = curses.initscr()
         curses.start_color()
         curses.noecho()
@@ -449,11 +451,6 @@ class TTYBackend:
         self.__scratch: curses.window = curses.newpad(1, 1)
         self.__drawn: QuadTree = QuadTree()
         self.__pad: ScrollablePad = ScrollablePad(dims, self.pad_callback)
-
-        maze_box = FBox(
-            IVec2(BInt(dims.x), BInt(dims.y)),
-            lambda at, into: self.__pad.present(at, into, self.__scratch),
-        )
 
         self.__filler_boxes: list[DBox] = []
 
@@ -500,26 +497,39 @@ class TTYBackend:
         layout = layout_split(
             layout_fair, layout_sort_chunked(layout_fair, layout_priority, f)
         )
-        maze_box = VBox(
-            layout,
-            [
-                (filler_box(), 0),
-                (
-                    HBox(
-                        layout,
-                        [
-                            (filler_box(), 0),
-                            (maze_box, 1),
-                            (filler_box(), 0),
-                        ],
-                    ),
-                    1,
-                ),
-                (filler_box(), 0),
-            ],
-        )
 
-        prompt_box = filler_box()
+        def fullpadded(box: Box) -> Box:
+            return VBox(
+                layout,
+                [
+                    (filler_box(), 0),
+                    (
+                        HBox(
+                            layout,
+                            [
+                                (filler_box(), 0),
+                                (box, 1),
+                                (filler_box(), 0),
+                            ],
+                        ),
+                        1,
+                    ),
+                    (filler_box(), 0),
+                ],
+            )
+
+        maze_box = FBox(
+            IVec2(BInt(dims.x), BInt(dims.y)),
+            lambda at, into: self.__pad.present(at, into, self.__scratch),
+        )
+        maze_box = fullpadded(maze_box)
+        prompt_box = FBox(
+            IVec2(BInt(config.prompt_size.x), BInt(config.prompt_size.y)),
+            lambda at, into: self.__tilemap.draw_at_wrapping(
+                IVec2.splat(0), at, into, self.tilemaps.prompt, self.__scratch
+            ),
+        )
+        prompt_box = fullpadded(prompt_box)
 
         def border_line_box(y: int) -> Box:
             return HBox.noassoc(
@@ -558,8 +568,6 @@ class TTYBackend:
 
         self.__style_bimap: BiMap[int, IVec2] = BiMap()
         self.__bg_init: Callable[[IVec2], int] | None = None
-
-        self.__uninit: bool = False
 
     def __del__(self) -> None:
         self.uninit()

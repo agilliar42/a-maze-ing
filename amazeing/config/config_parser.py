@@ -236,6 +236,9 @@ def DefaultedField[T, U](
         def default(self) -> U:
             return default
 
+        def merge(self, vals: list[T]) -> U:
+            return cls.merge(self, vals) if len(vals) > 0 else self.default()
+
     return Inner
 
 
@@ -253,6 +256,9 @@ def DefaultedStrField[T, U](
                     )
                 acc.append(res[0])
             return self.merge(acc)  # type: ignore
+
+        def merge(self, vals: list[T]) -> U:
+            return cls.merge(self, vals) if len(vals) > 0 else self.default()
 
     return Inner
 
@@ -272,16 +278,14 @@ def MappedField[T, U, V](
             return mapping(self.__inner.default())
 
         def merge(self, vals: list[T]) -> V:
-            return mapping(self.__inner.merge(vals))
+            res = mapping(self.__inner.merge(vals))
+            return res
 
     return Inner
 
 
 def ListParser[T](parser: Parser[T]) -> Type[ConfigField[list[T]]]:
     class Inner(ConfigField[list[T]]):
-        def __init__(self, name: str) -> None:
-            super().__init__(name)
-
         def parse(self, s: str) -> ParseResult[list[T]]:
             return parser_map(lambda e: [e], parser)(s)
 
@@ -353,12 +357,22 @@ def fields_parser(
                 for name, values in res.items()
             }
         )
+
+        def default_lists(d: dict[str, list[Any]]) -> dict[str, list[Any]]:
+            for field in fields.keys():
+                if field not in d:
+                    d[field] = []
+            return d
+
         return parser_map(
             fields_map,
-            fold(
-                parse_line,
-                fold_fn,
-                lambda: {name: [] for name in fields.keys()},
+            parser_map(
+                default_lists,
+                fold(
+                    parse_line,
+                    fold_fn,
+                    lambda: {name: [] for name in fields.keys()},
+                ),
             ),
         )(s)
 
@@ -386,6 +400,8 @@ class Config:
     tilemap_box_size: IVec2
     tilemap_box_bridge_size: IVec2
     tilemap_box: list[ColoredLine]
+    prompt_size: IVec2
+    prompt: list[ColoredLine]
     maze_pattern: list[str]
 
     def __init__(self) -> None:
@@ -445,10 +461,21 @@ class Config:
                     "TILEMAP_BOX": DefaultedStrField(
                         ListParser(parse_colored_line),
                         [
-                            '"{1000,500,500:0,0,0}╔═╦╗"',
-                            '"{1000,500,500:0,0,0}║ ║║"',
-                            '"{1000,500,500:0,0,0}╠═╬╣"',
-                            '"{1000,500,500:0,0,0}╚═╩╝"',
+                            '"{RED:BLACK}╔═╦╗"',
+                            '"{RED:BLACK}║ ║║"',
+                            '"{RED:BLACK}╠═╬╣"',
+                            '"{RED:BLACK}╚═╩╝"',
+                        ],
+                    ),
+                    "PROMPT_SIZE": DefaultedField(CoordField, IVec2(32, 5)),
+                    "PROMPT": DefaultedStrField(
+                        ListParser(parse_colored_line),
+                        [
+                            '"{WHITE:BLACK}                                "',
+                            '"{WHITE:BLACK} q: quit         r: regenerate  "',
+                            '"{WHITE:BLACK} c: color next   k: play/pause  "',
+                            '"{WHITE:BLACK} v: color prev   p: toggle path "',
+                            '"{WHITE:BLACK}                                "',
                         ],
                     ),
                 }
