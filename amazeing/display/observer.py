@@ -11,11 +11,8 @@ class TTYTracker:
     def __init__(self, maze: Maze, config: Config):
         self.maze = maze
         self.dirty_tracker = DirtyTracker(maze)
-        self.backend = TTYBackend(
-            maze.dims, config.tilemap_wall_size, config.tilemap_cell_size
-        )
-        self.pair_map = extract_pairs(config)
-        tilemaps = TileMaps(config, self.pair_map, self.backend)
+        self.backend = TTYBackend(config)
+        tilemaps = self.backend.tilemaps
         self.filler_style = TileCycle(tilemaps.filler, self.backend.set_filler)
         self.empty_style = TileCycle(
             tilemaps.empty, self.backend.map_style_cb()

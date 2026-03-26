@@ -52,7 +52,12 @@ class Maze:
         return CellCoord(self.dims).all_up_to()
 
     def check_cell(self, cell: CellCoord) -> bool:
-        return self.dims.x > cell.x and self.dims.y > cell.y
+        return (
+            self.dims.x > cell.x
+            and self.dims.y > cell.y
+            and cell.x >= 0
+            and cell.y >= 0
+        )
 
     def check_coord(self, coord: WallCoord) -> bool:
         if coord.a < 0 or coord.b < 0:

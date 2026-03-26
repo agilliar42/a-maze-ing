@@ -383,6 +383,9 @@ class Config:
     tilemap_path: list[list[ColoredLine]]
     tilemap_background_size: IVec2
     tilemap_background: list[list[ColoredLine]]
+    tilemap_box_size: IVec2
+    tilemap_box_bridge_size: IVec2
+    tilemap_box: list[ColoredLine]
     maze_pattern: list[str]
 
     def __init__(self) -> None:
@@ -432,6 +435,21 @@ class Config:
                     ),
                     "MAZE_PATTERN": DefaultedField(
                         PatternField, Pattern.FT_PATTERN
+                    ),
+                    "TILEMAP_BOX_SIZE": DefaultedField(
+                        CoordField, IVec2(1, 1)
+                    ),
+                    "TILEMAP_BOX_BRIDGE_SIZE": DefaultedField(
+                        CoordField, IVec2(1, 1)
+                    ),
+                    "TILEMAP_BOX": DefaultedStrField(
+                        ListParser(parse_colored_line),
+                        [
+                            '"{1000,500,500:0,0,0}╔═╦╗"',
+                            '"{1000,500,500:0,0,0}║ ║║"',
+                            '"{1000,500,500:0,0,0}╠═╬╣"',
+                            '"{1000,500,500:0,0,0}╚═╩╝"',
+                        ],
                     ),
                 }
             )

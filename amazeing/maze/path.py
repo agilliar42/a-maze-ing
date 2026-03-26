@@ -1,12 +1,9 @@
 from collections.abc import Generator
 from dataclasses import dataclass
 from amazeing.maze.maze import Maze
-from amazeing.maze.network_tracker import NetworkTracker
 from amazeing.utils.coords import Cardinal, CellCoord
 from amazeing.utils.ivec2 import IVec2
 import heapq
-
-from amazeing.utils.quadtree import rect_collides
 
 
 def taxicab_distance(a: IVec2, b: IVec2) -> int:

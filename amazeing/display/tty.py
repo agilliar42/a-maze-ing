@@ -18,6 +18,8 @@ from amazeing.display.layout import (
 from amazeing.utils import Rect, QuadTree, IVec2
 import curses
 
+from amazeing.utils.coords import Orientation
+
 
 class BackendException(Exception):
     pass
@@ -184,11 +186,11 @@ class MazeTileMap:
     def __init__(self, wall_dim: IVec2, cell_dim: IVec2) -> None:
         self.__wall_dim: IVec2 = wall_dim
         self.__cell_dim: IVec2 = cell_dim
-        self.__tiles: list[Tile] = []
+        self.tiles: list[ITile] = []
 
-    def add_tile(self, tile: Tile) -> int:
-        res = len(self.__tiles)
-        self.__tiles.append(tile)
+    def add_tile(self, tile: ITile) -> int:
+        res = len(self.tiles)
+        self.tiles.append(tile)
         return res
 
     def dst_coord(self, pos: IVec2) -> IVec2:
@@ -211,7 +213,7 @@ class MazeTileMap:
         ) * self.__wall_dim + pos % IVec2.splat(2) * self.__cell_dim
 
     def draw_at(self, at: IVec2, idx: int, window: curses.window) -> None:
-        self.__tiles[idx].blit(
+        self.tiles[idx].blit(
             self.src_coord(at),
             self.dst_coord(at),
             self.tile_size(at),
@@ -226,7 +228,7 @@ class MazeTileMap:
         idx: int,
         window: curses.window,
     ) -> None:
-        self.__tiles[idx].blit_wrapping(start, at, into, window)
+        self.tiles[idx].blit_wrapping(start, at, into, window)
 
 
 class ScrollablePad:
@@ -289,7 +291,7 @@ def extract_pairs(
             config.tilemap_background,
         )
         for e in tilemaps
-    ]
+    ] + [config.tilemap_box]
     pairs = {
         pair
         for tilemap in all_tilemaps
@@ -376,6 +378,26 @@ class TileMaps:
             )
         )
 
+        box = new_tilemap(
+            config.tilemap_box,
+            config.tilemap_box_size * IVec2.splat(3)
+            + config.tilemap_box_bridge_size,
+        )
+
+        self.box: list[list[int]] = []
+        corner = config.tilemap_box_size
+        bridge = config.tilemap_box_bridge_size
+        y = 0
+        for height in (corner.y, bridge.y, corner.y, corner.y):
+            x = 0
+            line: list[int] = []
+            for width in (corner.x, bridge.x, corner.x, corner.x):
+                tile = SubTile(box, IVec2(x, y), IVec2(width, height))
+                line.append(backend.add_style(tile))
+                x += width
+            self.box.append(line)
+            y += height
+
 
 class TileCycle[T]:
     def __init__(
@@ -400,14 +422,18 @@ class TileCycle[T]:
 
 class TTYBackend:
     def __init__(
-        self, maze_dims: IVec2, wall_dim: IVec2, cell_dim: IVec2
+        self,
+        config: Config,
     ) -> None:
         super().__init__()
-        self.__tilemap: MazeTileMap = MazeTileMap(wall_dim, cell_dim)
+        self.__tilemap: MazeTileMap = MazeTileMap(
+            config.tilemap_wall_size, config.tilemap_cell_size
+        )
         self.__style = 0
+        self.__dims = IVec2(config.width, config.height)
 
         dims = self.__tilemap.dst_coord(
-            maze_dims * IVec2.splat(2) + IVec2.splat(1)
+            self.__dims * IVec2.splat(2) + IVec2.splat(1)
         )
 
         self.__screen: curses.window = curses.initscr()
@@ -417,10 +443,12 @@ class TTYBackend:
         curses.curs_set(0)
         self.__screen.keypad(True)
 
+        pair_map = extract_pairs(config)
+        self.tilemaps = TileMaps(config, pair_map, self)
+
         self.__scratch: curses.window = curses.newpad(1, 1)
         self.__drawn: QuadTree = QuadTree()
         self.__pad: ScrollablePad = ScrollablePad(dims, self.pad_callback)
-        self.__dims = maze_dims
 
         maze_box = FBox(
             IVec2(BInt(dims.x), BInt(dims.y)),
@@ -448,22 +476,79 @@ class TTYBackend:
             )
             return res
 
+        def border_box(x: int, y: int, orient: Orientation | None) -> Box:
+            tile = self.tilemaps.box[y][x]
+            dims = self.__tilemap.tiles[tile].size()
+            box_dims = IVec2(BInt(0, True), BInt(0, True))
+            match orient:
+                case Orientation.HORIZONTAL:
+                    box_dims.y = BInt(dims.y)
+                case Orientation.VERTICAL:
+                    box_dims.x = BInt(dims.x)
+                case None:
+                    box_dims.x = BInt(dims.x)
+                    box_dims.y = BInt(dims.y)
+
+            return FBox(
+                box_dims,
+                lambda at, into: self.__tilemap.draw_at_wrapping(
+                    IVec2(0, 0), at, into, tile, self.__scratch
+                ),
+            )
+
         f: Callable[[int], int] = lambda e: e
         layout = layout_split(
             layout_fair, layout_sort_chunked(layout_fair, layout_priority, f)
         )
-        self.__layout: Box = VBox(
+        maze_box = VBox(
             layout,
             [
                 (filler_box(), 0),
                 (
                     HBox(
                         layout,
-                        [(filler_box(), 0), (maze_box, 1), (filler_box(), 0)],
+                        [
+                            (filler_box(), 0),
+                            (maze_box, 1),
+                            (filler_box(), 0),
+                        ],
                     ),
                     1,
                 ),
                 (filler_box(), 0),
+            ],
+        )
+
+        prompt_box = filler_box()
+
+        def border_line_box(y: int) -> Box:
+            return HBox.noassoc(
+                layout_fair,
+                [
+                    border_box(0, y, None),
+                    border_box(1, y, Orientation.HORIZONTAL),
+                    border_box(3, y, None),
+                ],
+            )
+
+        def border_column_sides(box: Box) -> Box:
+            return HBox.noassoc(
+                layout_fair,
+                [
+                    border_box(0, 1, Orientation.VERTICAL),
+                    box,
+                    border_box(3, 1, Orientation.VERTICAL),
+                ],
+            )
+
+        self.__layout: Box = VBox.noassoc(
+            layout_fair,
+            [
+                border_line_box(0),
+                border_column_sides(maze_box),
+                border_line_box(2),
+                border_column_sides(prompt_box),
+                border_line_box(3),
             ],
         )
 
@@ -540,7 +625,7 @@ class TTYBackend:
 
         return inner
 
-    def add_style(self, style: Tile) -> int:
+    def add_style(self, style: ITile) -> int:
         return self.__tilemap.add_tile(style)
 
     def dims(self) -> IVec2:
