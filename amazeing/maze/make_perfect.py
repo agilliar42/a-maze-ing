@@ -1,4 +1,3 @@
-from typing import Callable
 from amazeing.maze import Maze
 import random
 

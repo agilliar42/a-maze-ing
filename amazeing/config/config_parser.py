@@ -389,7 +389,6 @@ class Config:
     seed: int | None
     screensaver: bool
     visual: bool
-    interactive: bool
     tilemap_wall_size: IVec2
     tilemap_cell_size: IVec2
     tilemap_full: list[list[ColoredLine]]
@@ -423,7 +422,6 @@ class Config:
                     "SEED": OptionalField(IntField),
                     "SCREENSAVER": DefaultedField(BoolField, False),
                     "VISUAL": DefaultedField(BoolField, False),
-                    "INTERACTIVE": DefaultedField(BoolField, False),
                     "TILEMAP_WALL_SIZE": DefaultedField(
                         CoordField, IVec2(2, 1)
                     ),

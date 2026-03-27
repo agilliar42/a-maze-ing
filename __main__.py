@@ -1,4 +1,4 @@
-from amazeing.display.observer import TTYTracker
+from amazeing.display.observer import MazeRegenerate, TTYTracker
 from amazeing.maze import (
     Maze,
     Pattern,
@@ -7,6 +7,7 @@ from amazeing.maze import (
     PacmanTracker,
     make_pacman,
     make_perfect,
+    make_empty,
 )
 from amazeing.config.config_parser import Config
 import random
@@ -20,27 +21,41 @@ maze = Maze(config)
 
 pacman_tracker = PacmanTracker(maze)
 network_tracker = NetworkTracker(maze)
-tty_tracker = TTYTracker(maze, config)
+tty_tracker = TTYTracker(maze, config) if config.visual else None
 
 excluded = {maze.entry, maze.exit}
 
 pattern = Pattern(config.maze_pattern).centered_for(maze.dims, excluded)
-pattern.fill(maze)
-maze.outline()
-
-walls_const = set(maze.walls_full())
-
-make_perfect(maze, network_tracker)
-make_pacman(maze, walls_const, pacman_tracker)
 
 
-while False:
+def maze_main() -> None:
+    pattern.fill(maze)
+    maze.outline()
+
+    walls_const = set(maze.walls_full())
+
     make_perfect(maze, network_tracker)
-    make_pacman(maze, walls_const, pacman_tracker)
-    make_empty(maze, walls_const)
+    if not config.perfect:
+        make_pacman(maze, walls_const, pacman_tracker)
+
+    while config.screensaver:
+        make_perfect(maze, network_tracker)
+        make_pacman(maze, walls_const, pacman_tracker)
 
 
-while True:
-    tty_tracker.display_maze(wait_for_tick=True)
+if config.visual:
+    while True:
+        try:
+            if tty_tracker is not None:
+                tty_tracker.update = False
+                make_empty(maze, set())
+                tty_tracker.update = True
 
-tty_tracker.backend.uninit()
+            maze_main()
+
+            while tty_tracker is not None:
+                tty_tracker.display_maze(wait_for_tick=True)
+        except MazeRegenerate:
+            continue
+else:
+    maze_main()
