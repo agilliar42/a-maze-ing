@@ -44,6 +44,17 @@ class Cardinal(Enum):
     def right(self) -> "Cardinal":
         return self.left().opposite()
 
+    def __repr__(self) -> str:
+        match self:
+            case Cardinal.NORTH:
+                return "N"
+            case Cardinal.EAST:
+                return "E"
+            case Cardinal.SOUTH:
+                return "S"
+            case Cardinal.WEST:
+                return "W"
+
     @staticmethod
     def all() -> list["Cardinal"]:
         return [Cardinal.NORTH, Cardinal.SOUTH, Cardinal.EAST, Cardinal.WEST]

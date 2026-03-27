@@ -9,6 +9,7 @@ from mazegen.maze import (
     make_perfect,
 )
 from mazegen.config.config_parser import Config
+from mazegen.maze.output import format_maze
 import random
 
 config = Config.parse(open("./example.conf").read())
