@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, Type, cast
 
-from amazeing.utils import IVec2
+from mazegen.utils import IVec2
 from .parser_combinator import (
     ParseResult,
     Parser,
@@ -408,7 +408,7 @@ class Config:
 
     @staticmethod
     def parse(s: str) -> "Config":
-        from amazeing.maze import Pattern
+        from mazegen.maze import Pattern
 
         fields = parser_complete(
             fields_parser(

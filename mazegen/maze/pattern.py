@@ -1,6 +1,6 @@
 from collections.abc import Iterable, Generator, Callable
-from amazeing.utils import IVec2, CellCoord
-from amazeing.maze import Maze
+from mazegen.utils import IVec2, CellCoord
+from mazegen.maze import Maze
 
 
 class Pattern:

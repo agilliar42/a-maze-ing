@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from dataclasses import dataclass
-from amazeing.maze.maze import Maze
-from amazeing.utils.coords import Cardinal, CellCoord
-from amazeing.utils.ivec2 import IVec2
+from mazegen.maze.maze import Maze
+from mazegen.utils.coords import Cardinal, CellCoord
+from mazegen.utils.ivec2 import IVec2
 import heapq
 
 

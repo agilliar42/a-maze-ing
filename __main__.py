@@ -1,5 +1,5 @@
-from amazeing.display.observer import MazeRegenerate, TTYTracker
-from amazeing.maze import (
+from mazegen.display.observer import MazeRegenerate, TTYTracker
+from mazegen.maze import (
     Maze,
     Pattern,
     make_empty,
@@ -9,7 +9,7 @@ from amazeing.maze import (
     make_perfect,
     make_empty,
 )
-from amazeing.config.config_parser import Config
+from mazegen.config.config_parser import Config
 import random
 
 config = Config.parse(open("./example.conf").read())

@@ -1,12 +1,11 @@
-from collections.abc import Iterable
-from amazeing.maze import Maze
-from amazeing.utils import Randset, WallCoord
+from mazegen.maze import Maze
+from mazegen.utils import WallCoord
 
 
-class PacmanTracker:
+class DirtyTracker:
     def __init__(self, maze: Maze) -> None:
         self.__maze: Maze = maze
-        self.__dirty: Randset[WallCoord] = Randset()
+        self.__dirty: set[WallCoord] = set()
         maze.observers.add(self.__observer)
 
     def __repr__(self) -> str:
@@ -16,16 +15,14 @@ class PacmanTracker:
         self.__maze.observers.discard(self.__observer)
 
     def __observer(self, wall: WallCoord) -> None:
-        for cell in wall.neighbour_cells():
-            for e in cell.walls():
-                self.__dirty.add(e)
+        self.__dirty ^= {wall}
 
-    def clear(self) -> Randset[WallCoord]:
+    def clear(self) -> set[WallCoord]:
         res = self.__dirty
-        self.__dirty = Randset()
+        self.__dirty = set()
         return res
 
-    def curr_dirty(self) -> Iterable[WallCoord]:
+    def curr_dirty(self) -> set[WallCoord]:
         return self.__dirty
 
     def end(self) -> None:

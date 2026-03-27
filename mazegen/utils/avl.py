@@ -3,9 +3,9 @@ from collections.abc import Callable, Iterator
 from typing import Self, cast
 import textwrap
 
-from amazeing.utils.coords import CellCoord, SplitWall
-from amazeing.utils.ivec2 import IVec2
-from amazeing.utils.quadtree import Rect
+from mazegen.utils.coords import CellCoord, SplitWall
+from mazegen.utils.ivec2 import IVec2
+from mazegen.utils.quadtree import Rect
 
 
 class Key(ABC):

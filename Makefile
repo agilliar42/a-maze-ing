@@ -1,5 +1,5 @@
 install:
-	pip install flake8 mypy flameprof
+	pip install flake8 mypy flameprof build
 
 .venv:
 	python -m venv .venv
@@ -10,6 +10,9 @@ venv_bash: .venv
 run-prof:
 	python -m cProfile -o out.prof __main__.py
 	flameprof out.prof > prof.svg
+
+package:
+	python -m build --sdist mazegen
 
 run:
 
@@ -25,4 +28,4 @@ lint-strict:
 profile:
 	python -m cProfile -o out.prof __main__.py
 
-.PHONY: install venv  run clean lint lint-strict profile
+.PHONY: install venv  run clean lint lint-strict profile package

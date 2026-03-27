@@ -1,8 +1,8 @@
-from amazeing.maze import Maze
-from amazeing.utils import WallCoord
+from mazegen.maze import Maze
+from mazegen.utils import WallCoord
 import random
 
-from amazeing.maze import PacmanTracker
+from mazegen.maze import PacmanTracker
 
 
 def make_pacman(

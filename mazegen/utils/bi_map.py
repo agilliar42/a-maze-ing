@@ -1,4 +1,4 @@
-from amazeing.utils.avl import (
+from mazegen.utils.avl import (
     Tree as AVLTree,
     Leaf as AVLLeaf,
     NoopKey as AVLNoopKey,

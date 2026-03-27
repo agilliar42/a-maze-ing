@@ -1,6 +1,6 @@
 from typing import Callable, Generator, Iterable
-from amazeing.config.config_parser import Config
-from amazeing.utils import (
+from mazegen.config.config_parser import Config
+from mazegen.utils import (
     CellCoord,
     Orientation,
     WallCoord,

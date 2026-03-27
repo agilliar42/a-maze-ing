@@ -1,11 +1,11 @@
 from sys import stderr
 import time
-from amazeing.config.config_parser import Config
-from amazeing.display.tty import TTYBackend, TileCycle
-from amazeing.maze.dirty_tracker import DirtyTracker
-from amazeing.maze.maze import Maze
-from amazeing.maze.path import path_pixels, pathfind_astar
-from amazeing.utils.coords import Cardinal
+from mazegen.config.config_parser import Config
+from mazegen.display.tty import TTYBackend, TileCycle
+from mazegen.maze.dirty_tracker import DirtyTracker
+from mazegen.maze.maze import Maze
+from mazegen.maze.path import path_pixels, pathfind_astar
+from mazegen.utils.coords import Cardinal
 
 
 class MazeRegenerate(Exception):

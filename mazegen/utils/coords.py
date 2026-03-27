@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from typing import Iterable, cast, overload
-from amazeing.utils.ivec2 import IVec2
+from mazegen.utils.ivec2 import IVec2
 
 
 class Orientation(Enum):

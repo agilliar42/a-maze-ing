@@ -1,7 +1,7 @@
-from amazeing.maze import Maze
+from mazegen.maze import Maze
 import random
 
-from amazeing.maze import NetworkTracker
+from mazegen.maze import NetworkTracker
 
 
 def make_perfect(

@@ -1,14 +1,14 @@
-from amazeing.maze import Maze
-from amazeing.utils.coords import (
+from mazegen.maze import Maze
+from mazegen.utils.coords import (
     Cardinal,
     CellCoord,
     split_wall_ccw,
     split_wall_cw,
     split_wall_opposite,
 )
-from amazeing.utils import AVLTree, AVLLeaf, SplitWall, WallCoord
-from amazeing.utils.avl import BVHKey
-from amazeing.utils.quadtree import Rect
+from mazegen.utils import AVLTree, AVLLeaf, SplitWall, WallCoord
+from mazegen.utils.avl import BVHKey
+from mazegen.utils.quadtree import Rect
 
 
 class DualForest:

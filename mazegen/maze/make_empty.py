@@ -1,5 +1,5 @@
-from amazeing.maze import Maze
-from amazeing.utils import WallCoord
+from mazegen.maze import Maze
+from mazegen.utils import WallCoord
 import random
 
 

@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator, Iterable
 from dataclasses import dataclass
-from amazeing.utils import BiMap
-from amazeing.config.config_parser import Color, Config, ColoredLine, ColorPair
-from amazeing.display.layout import (
+from mazegen.utils import BiMap
+from mazegen.config.config_parser import Color, Config, ColoredLine, ColorPair
+from mazegen.display.layout import (
     BInt,
     Box,
     DBox,
@@ -15,10 +15,10 @@ from amazeing.display.layout import (
     layout_sort_chunked,
     layout_split,
 )
-from amazeing.utils import Rect, QuadTree, IVec2
+from mazegen.utils import Rect, QuadTree, IVec2
 import curses
 
-from amazeing.utils.coords import Orientation
+from mazegen.utils.coords import Orientation
 
 
 class BackendException(Exception):
