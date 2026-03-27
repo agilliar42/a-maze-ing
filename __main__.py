@@ -34,13 +34,13 @@ make_perfect(maze, network_tracker)
 make_pacman(maze, walls_const, pacman_tracker)
 
 
-while True:
+while False:
     make_perfect(maze, network_tracker)
     make_pacman(maze, walls_const, pacman_tracker)
     make_empty(maze, walls_const)
 
 
 while True:
-    tty_tracker.display_maze()
+    tty_tracker.display_maze(wait_for_tick=True)
 
 tty_tracker.backend.uninit()

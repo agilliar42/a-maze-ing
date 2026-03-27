@@ -24,6 +24,7 @@ class TTYTracker:
 
         self.tick: float | None = None
         self.prev_path: list[Cardinal] | None = None
+        self.draw_path: bool = True
 
         maze.observers.add(lambda _: self.display_maze())
 
@@ -49,12 +50,11 @@ class TTYTracker:
         if (
             all(map(self.maze.get_wall, self.dirty_tracker.curr_dirty()))
             and not self.path_invalidated()
+            and self.draw_path
         ):
             return None
-        path = pathfind_astar(self.maze)
+        path = pathfind_astar(self.maze) if self.draw_path else None
         if self.prev_path is not None:
-            if self.prev_path == path:
-                return
             self.backend.set_style(self.empty_style.curr_style())
             for tile in path_pixels(self.maze.entry, self.prev_path):
                 self.backend.draw_tile(tile)
@@ -66,7 +66,7 @@ class TTYTracker:
 
     def poll_events(self) -> None:
         while True:
-            event = self.backend.event(0)
+            event = self.backend.event()
             if isinstance(event, bool):
                 if not event:
                     return
@@ -83,13 +83,20 @@ class TTYTracker:
                 self.full_style.cycle(-1)
                 self.path_style.cycle(-1)
                 self.empty_style.cycle(-1)
+            if event.sym == "p":
+                self.draw_path = not self.draw_path
             else:
                 continue
 
-    def display_maze(self) -> None:
+    def display_maze(
+        self, wait_for_tick: bool = False, frametime: float = 0.016
+    ) -> None:
         now = time.monotonic()
-        if self.tick is not None and now - self.tick < 0.016:
-            return
+        if self.tick is not None:
+            if wait_for_tick:
+                time.sleep(max(0.0, frametime - now + self.tick))
+            elif now - self.tick < frametime:
+                return
         self.tick = time.monotonic()
 
         self.clear_backend()

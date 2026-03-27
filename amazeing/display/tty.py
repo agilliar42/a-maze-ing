@@ -439,6 +439,7 @@ class TTYBackend:
 
         self.__uninit: bool = False
         self.__screen: curses.window = curses.initscr()
+        self.__screen.timeout(0)
         curses.start_color()
         curses.noecho()
         curses.cbreak()
@@ -562,7 +563,7 @@ class TTYBackend:
             ],
         )
 
-        self.__resize: bool = False
+        self.__redraw: bool = True
 
         self.__filler: None | int = None
 
@@ -604,6 +605,7 @@ class TTYBackend:
     def set_filler(self, style: int) -> None:
         if self.__filler == style:
             return
+        self.__redraw = True
         self.__filler = style
         for box in self.__filler_boxes:
             box.mark_dirty()
@@ -618,6 +620,7 @@ class TTYBackend:
         if src == dst:
             return
         if self.get_style_height(src) != 0:
+            self.__redraw = True
             self.__drawn = QuadTree()
             self.__style_bimap.key_map(src, dst)
 
@@ -643,24 +646,22 @@ class TTYBackend:
         style = self.__style
         self.__style_bimap.add(style, pos)
         self.__tilemap.draw_at(pos, style, self.__pad.pad)
+        self.__redraw = True
 
     def set_style(self, style: int) -> None:
         self.__style = style
 
     def present(self) -> None:
-        if self.__resize:
-            self.__resize = False
-            self.__screen.erase()
-            for box in self.__filler_boxes:
-                box.mark_dirty()
+        if not self.__redraw:
+            return
+        self.__redraw = False
         self.__screen.refresh()
         y, x = self.__screen.getmaxyx()
         self.__scratch.resize(y, x)
         self.__layout.laid_out(IVec2(0, 0), IVec2(x, y))
         self.__scratch.overwrite(self.__screen)
 
-    def event(self, timeout_ms: int = -1) -> KeyboardInput | bool:
-        self.__screen.timeout(timeout_ms)
+    def event(self) -> KeyboardInput | bool:
         try:
             key = self.__screen.getkey()
         except curses.error:
@@ -668,7 +669,9 @@ class TTYBackend:
 
         match key:
             case "KEY_RESIZE":
-                self.__resize = True
+                self.__screen.erase()
+                for box in self.__filler_boxes:
+                    box.mark_dirty()
             case "KEY_DOWN":
                 self.__pad.scroll(IVec2(0, 1))
             case "KEY_UP":
@@ -679,4 +682,5 @@ class TTYBackend:
                 self.__pad.scroll(IVec2(-1, 0))
             case _:
                 return KeyboardInput(key)
+        self.__redraw = True
         return True

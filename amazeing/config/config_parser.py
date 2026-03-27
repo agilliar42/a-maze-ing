@@ -432,7 +432,12 @@ class Config:
                     ),
                     "TILEMAP_FULL": DefaultedStrField(
                         ColoredLineField,
-                        ['"{WHITE:WHITE}    "', '"{WHITE:WHITE}    "'],
+                        [
+                            '1"{WHITE:WHITE}    "',
+                            '1"{WHITE:WHITE}    "',
+                            '2"{MAGENTA:MAGENTA}    "',
+                            '2"{MAGENTA:MAGENTA}    "',
+                        ],
                     ),
                     "TILEMAP_EMPTY": DefaultedStrField(
                         ColoredLineField,
@@ -440,7 +445,12 @@ class Config:
                     ),
                     "TILEMAP_PATH": DefaultedStrField(
                         ColoredLineField,
-                        ['"{BLUE:BLUE}    "', '"{BLUE:BLUE}    "'],
+                        [
+                            '1"{BLUE:BLUE}    "',
+                            '1"{BLUE:BLUE}    "',
+                            '2"{RED:RED}    "',
+                            '2"{RED:RED}    "',
+                        ],
                     ),
                     "TILEMAP_BACKGROUND_SIZE": DefaultedField(
                         CoordField, IVec2(4, 2)
