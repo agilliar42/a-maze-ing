@@ -16,7 +16,7 @@ run:
 	poetry run python a_maze_ing.py
 
 build:
-	poetry build
+	poetry build -o .
 
 clean:
 
