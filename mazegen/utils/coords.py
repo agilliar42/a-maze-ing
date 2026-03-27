@@ -44,7 +44,7 @@ class Cardinal(Enum):
     def right(self) -> "Cardinal":
         return self.left().opposite()
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         match self:
             case Cardinal.NORTH:
                 return "N"

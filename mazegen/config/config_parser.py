@@ -384,7 +384,7 @@ class Config:
     height: int
     entry: IVec2 | None
     exit: IVec2 | None
-    output_file: str | None
+    output_file: str
     perfect: bool
     seed: int | None
     screensaver: bool
@@ -417,7 +417,7 @@ class Config:
                     "HEIGHT": IntField,
                     "ENTRY": OptionalField(CoordField),
                     "EXIT": OptionalField(CoordField),
-                    "OUTPUT_FILE": OptionalField(PathField),
+                    "OUTPUT_FILE": PathField,
                     "PERFECT": DefaultedField(BoolField, True),
                     "SEED": OptionalField(IntField),
                     "SCREENSAVER": DefaultedField(BoolField, False),

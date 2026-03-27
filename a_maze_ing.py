@@ -9,7 +9,7 @@ from mazegen.maze import (
     make_perfect,
 )
 from mazegen.config.config_parser import Config
-from mazegen.maze.output import format_maze
+from mazegen.maze.output import format_output
 import random
 
 config = Config.parse(open("./example.conf").read())
@@ -52,6 +52,9 @@ if config.visual:
                 tty_tracker.update = True
 
             maze_main()
+
+            with open(config.output_file, "w") as f:
+                f.write(format_output(maze))
 
             while tty_tracker is not None:
                 tty_tracker.display_maze(wait_for_tick=True)

@@ -3,13 +3,12 @@ from mazegen.utils import CellCoord, Cardinal
 from mazegen.maze.path import pathfind_astar
 
 
-def to_hex(cell: list[bool]):
+def to_hex(cell: list[bool]) -> str:
     val = (
-        1
-        if cell[0]
-        else (
-            0 + 2 if cell[1] else 0 + 4 if cell[2] else 0 + 8 if cell[3] else 0
-        )
+        (1 if cell[0] else 0)
+        + (2 if cell[1] else 0)
+        + (4 if cell[2] else 0)
+        + (8 if cell[3] else 0)
     )
     return "0123456789ABCDEF"[val]
 
@@ -37,6 +36,8 @@ def format_doors(maze: Maze) -> str:
 
 def format_path(maze: Maze) -> str:
     path = pathfind_astar(maze)
+    if path is None:
+        raise Exception("Could not pathfind!")
     return "".join(map(str, path)) + "\n"
 
 
