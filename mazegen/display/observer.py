@@ -111,7 +111,7 @@ class TTYTracker:
                 finally:
                     self.__paused = False
             if event.sym == "r":
-                self.redraw_path(self.__filler_style.curr_style())
+                self.redraw_path(self.__empty_style.curr_style())
                 self.__path = None
                 raise MazeRegenerate
             else:
