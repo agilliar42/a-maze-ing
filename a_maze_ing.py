@@ -7,7 +7,6 @@ from mazegen.maze import (
     PacmanTracker,
     make_pacman,
     make_perfect,
-    make_empty,
 )
 from mazegen.config.config_parser import Config
 import random

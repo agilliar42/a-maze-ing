@@ -1,4 +1,3 @@
-from sys import stderr
 import time
 from mazegen.config.config_parser import Config
 from mazegen.display.tty import TTYBackend, TileCycle

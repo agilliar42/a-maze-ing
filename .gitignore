@@ -4,3 +4,4 @@ out.prof
 prof.svg
 tmp
 .venv
+dist

@@ -519,12 +519,12 @@ class TTYBackend:
                 ],
             )
 
-        maze_box = FBox(
+        maze_box: Box = FBox(
             IVec2(BInt(dims.x), BInt(dims.y)),
             lambda at, into: self.__pad.present(at, into, self.__scratch),
         )
         maze_box = fullpadded(maze_box)
-        prompt_box = FBox(
+        prompt_box: Box = FBox(
             IVec2(BInt(config.prompt_size.x), BInt(config.prompt_size.y)),
             lambda at, into: self.__tilemap.draw_at_wrapping(
                 IVec2.splat(0), at, into, self.tilemaps.prompt, self.__scratch

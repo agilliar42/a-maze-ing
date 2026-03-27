@@ -1,9 +1,6 @@
 from mazegen.maze import Maze
 from mazegen.utils.coords import (
-    Cardinal,
-    CellCoord,
     split_wall_ccw,
-    split_wall_cw,
     split_wall_opposite,
 )
 from mazegen.utils import AVLTree, AVLLeaf, SplitWall, WallCoord

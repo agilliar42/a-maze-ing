@@ -1,5 +1,6 @@
 install:
-	pip install flake8 mypy flameprof build
+	pip install poetry
+	poetry install
 
 .venv:
 	python -m venv .venv
@@ -8,22 +9,24 @@ venv_bash: .venv
 	bash --init-file <(echo ". ~/.bashrc; export TERM=xterm-256color; . .venv/bin/activate")
 
 run-prof:
-	python -m cProfile -o out.prof __main__.py
+	poetry run python -m cProfile -o out.prof a_maze_ing.py
 	flameprof out.prof > prof.svg
 
-package:
-	python -m build --sdist mazegen
-
 run:
+	poetry run python a_maze_ing.py
+
+build:
+	poetry build
 
 clean:
 
 lint:
-	flake8 .
-	mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
+	poetry run flake8 .
+	poetry run mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 lint-strict:
-	bash -c "flake8 . --extend-exclude .venv; mypy . --strict"
+	poetry run flake8 . --extend-exclude .venv
+	poetry run mypy . --strict
 
 profile:
 	python -m cProfile -o out.prof __main__.py

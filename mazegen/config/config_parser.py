@@ -255,7 +255,7 @@ def DefaultedStrField[T, U](
                         "Failed to construct defaulted field " + self.name()
                     )
                 acc.append(res[0])
-            return self.merge(acc)  # type: ignore
+            return self.merge(acc)
 
         def merge(self, vals: list[T]) -> U:
             return cls.merge(self, vals) if len(vals) > 0 else self.default()

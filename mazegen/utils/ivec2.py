@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Type, cast
+from typing import Type
 
 
 class IVec2[T = int]:
