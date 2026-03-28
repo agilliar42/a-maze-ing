@@ -23,6 +23,7 @@ from .parser_combinator import (
     pair,
     parser_complete,
     parser_map,
+    parser_map_err,
     preceeded,
     recognize,
     seq,
@@ -329,19 +330,24 @@ PatternField = ListParser(parse_str_line)
 def line_parser[T](
     fields: dict[str, ConfigField[T]],
 ) -> Parser[tuple[str, T] | None]:
-    return alt(
-        parser_map(lambda _: None, parse_comment),
-        *(
-            preceeded(
-                seq(tag(name), multispace0, tag("="), multispace0),
-                parser_map(
-                    (lambda name: lambda res: (name, res))(name),
-                    cut(terminated(field.parse, multispace0)),
-                ),
-            )
-            for name, field in fields.items()
+    return parser_map_err(
+        lambda e: ParseError("Expected valid field name", e.at),
+        alt(
+            parser_map(lambda _: None, parse_comment),
+            *(
+                preceeded(
+                    seq(tag(name), multispace0, cut(tag("=")), multispace0),
+                    parser_map(
+                        (lambda name: lambda res: (name, res))(name),
+                        cut(terminated(field.parse, multispace0)),
+                    ),
+                )
+                for name, field in fields.items()
+            ),
+            parser_map(
+                lambda _: None, lookahead_parser(null_parser, tag("\n"))
+            ),
         ),
-        parser_map(lambda _: None, lookahead_parser(null_parser, tag("\n"))),
     )
 
 
