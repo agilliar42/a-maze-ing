@@ -4,16 +4,20 @@ from typing import Any, Type, cast
 
 from mazegen.utils import IVec2
 from .parser_combinator import (
+    ParseError,
     ParseResult,
     Parser,
     alt,
     ascii_digit,
     cut,
     delimited,
+    eof_parser,
     fold,
+    lookahead_parser,
     many,
     many_count,
     none_of,
+    nonempty_parser,
     null_parser,
     one_of,
     pair,
@@ -29,7 +33,10 @@ from .parser_combinator import (
 
 
 def parse_bool(s: str) -> ParseResult[bool]:
-    return alt(value(True, tag("True")), value(False, tag("False")))(s)
+    return alt(
+        value(True, tag("True")),
+        value(False, tag("False")),
+    )(s)
 
 
 def parse_int(s: str) -> ParseResult[int]:
@@ -44,8 +51,8 @@ def parse_comment(s: str) -> ParseResult[str]:
     return recognize(seq(tag("#"), many_count(none_of("\n"))))(s)
 
 
-def parse_empty_line(s: str) -> ParseResult[None]:
-    return (None, s) if s.startswith("\n") else None
+# def parse_empty_line(s: str) -> ParseResult[None]:
+#    return (None, s) if s.startswith("\n") else ParseError("temp", "temp")
 
 
 def spaced[T](parser: Parser[T]) -> Parser[T]:
@@ -124,12 +131,13 @@ def parse_colored_line(
     )
     noncolor_str = fold(
         alt(
-            none_of('\n{\\"'),
+            none_of('\n{}\\"'),
             preceeded(
                 tag("\\"),
                 cut(
                     alt(
                         value("{", tag("{")),
+                        value("}", tag("}")),
                         value("\\", tag("\\")),
                         value('"', tag('"')),
                     )
@@ -249,8 +257,8 @@ def DefaultedStrField[T, U](
         def default(self) -> U:
             acc = []
             for s in default_strs:
-                res = self.parse(s)
-                if res is None or res[1] != "":
+                res = parser_complete(self.parse)(s)
+                if isinstance(res, ParseError):
                     raise ConfigException(
                         "Failed to construct defaulted field " + self.name()
                     )
@@ -333,7 +341,7 @@ def line_parser[T](
             )
             for name, field in fields.items()
         ),
-        parser_map(lambda _: None, parse_empty_line),
+        parser_map(lambda _: None, lookahead_parser(null_parser, tag("\n"))),
     )
 
 
@@ -341,7 +349,9 @@ def fields_parser(
     fields_raw: dict[str, type[ConfigField[Any]]],
 ) -> Parser[dict[str, Any]]:
     fields = {key: cls(key) for key, cls in fields_raw.items()}
-    parse_line = terminated(line_parser(fields), cut(tag("\n")))
+    parse_line = nonempty_parser(
+        cut(terminated(line_parser(fields), alt(tag("\n"), eof_parser())))
+    )
 
     def inner(s: str) -> ParseResult[dict[str, Any]]:
         def fold_fn(
@@ -368,10 +378,12 @@ def fields_parser(
             fields_map,
             parser_map(
                 default_lists,
-                fold(
-                    parse_line,
-                    fold_fn,
-                    lambda: {name: [] for name in fields.keys()},
+                parser_complete(
+                    fold(
+                        parse_line,
+                        fold_fn,
+                        lambda: {name: [] for name in fields.keys()},
+                    )
                 ),
             ),
         )(s)
@@ -489,8 +501,8 @@ class Config:
                 }
             )
         )(s)
-        if fields is None:
-            raise ConfigException("Failed to parse config")
+        if isinstance(fields, ParseError):
+            raise fields
         res = Config()
         for key, val in fields[0].items():
             res.__dict__[key.lower()] = val

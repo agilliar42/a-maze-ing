@@ -1,3 +1,4 @@
+from mazegen.config.parser_combinator import ParseError
 from mazegen.display.observer import MazeRegenerate, TTYTracker
 from mazegen.maze import (
     Maze,
@@ -12,7 +13,13 @@ from mazegen.config.config_parser import Config
 from mazegen.maze.output import format_output
 import random
 
-config = Config.parse(open("./example.conf").read())
+config_filename = "./example.conf"
+config_str = open(config_filename).read()
+try:
+    config = Config.parse(config_str)
+except ParseError as e:
+    print(e.pretty_format(config_str, config_filename))
+    exit(1)
 
 if config.seed is not None:
     random.seed(config.seed)
