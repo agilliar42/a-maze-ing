@@ -554,6 +554,8 @@ class Config:
     tilemap_full: list[list[ColoredLine]]
     tilemap_empty: list[list[ColoredLine]]
     tilemap_path: list[list[ColoredLine]]
+    tilemap_entry: list[list[ColoredLine]]
+    tilemap_exit: list[list[ColoredLine]]
     tilemap_background_size: IVec2
     tilemap_background: list[list[ColoredLine]]
     tilemap_box_size: IVec2
@@ -609,6 +611,24 @@ class Config:
                             '1"{BLUE:BLUE}    "',
                             '2"{RED:RED}    "',
                             '2"{RED:RED}    "',
+                        ],
+                    ),
+                    "TILEMAP_ENTRY": DefaultedStrField(
+                        ColoredLineField,
+                        [
+                            '1"{WHITE:BLUE}####"',
+                            '1"{WHITE:BLUE}####"',
+                            '2"{WHITE:RED}####"',
+                            '2"{WHITE:RED}####"',
+                        ],
+                    ),
+                    "TILEMAP_EXIT": DefaultedStrField(
+                        ColoredLineField,
+                        [
+                            '1"{BLACK:BLUE}####"',
+                            '1"{BLACK:BLUE}####"',
+                            '2"{BLACK:RED}####"',
+                            '2"{BLACK:RED}####"',
                         ],
                     ),
                     "TILEMAP_BACKGROUND_SIZE": DefaultedField(

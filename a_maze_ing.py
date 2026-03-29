@@ -1,5 +1,4 @@
 from sys import stderr
-import time
 from typing import Never
 from mazegen.config.parser_combinator import ParseError
 from mazegen.display.observer import MazeRegenerate, TTYTracker

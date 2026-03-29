@@ -43,6 +43,12 @@ class TTYTracker:
         self.__path_style = TileCycle(
             tilemaps.path, self.__backend.map_style_cb()
         )
+        self.__entry_style = TileCycle(
+            tilemaps.entry, self.__backend.map_style_cb()
+        )
+        self.__exit_style = TileCycle(
+            tilemaps.exit, self.__backend.map_style_cb()
+        )
 
         self.__backend.set_bg_init(lambda _: self.__empty_style.curr_style())
 
@@ -79,14 +85,18 @@ class TTYTracker:
             src = src.get_neighbour(card)
         return False
 
-    def redraw_path(self, style: int) -> None:
+    def redraw_path(self, entry: int, path: int, exit: int) -> None:
         """
         Draws the current path with the given style
         """
         if self.__path is not None:
-            self.__backend.set_style(style)
+            self.__backend.set_style(path)
             for tile in Cardinal.path_to_tiles(self.__path, self.__maze.entry):
                 self.__backend.draw_tile(tile)
+        self.__backend.set_style(entry)
+        self.__backend.draw_tile(self.__maze.entry.tile_coords())
+        self.__backend.set_style(exit)
+        self.__backend.draw_tile(self.__maze.exit.tile_coords())
 
     def display_path(self) -> None:
         """
@@ -99,9 +109,14 @@ class TTYTracker:
         ):
             return None
         path = pathfind_astar(self.__maze) if self.__draw_path else None
-        self.redraw_path(self.__empty_style.curr_style())
+        empty = self.__empty_style.curr_style()
+        self.redraw_path(empty, empty, empty)
         self.__path = path
-        self.redraw_path(self.__path_style.curr_style())
+        self.redraw_path(
+            self.__entry_style.curr_style(),
+            self.__path_style.curr_style(),
+            self.__exit_style.curr_style(),
+        )
 
     def poll_events(self) -> None:
         """
@@ -120,11 +135,15 @@ class TTYTracker:
                 self.__filler_style.cycle()
                 self.__full_style.cycle()
                 self.__path_style.cycle()
+                self.__entry_style.cycle()
+                self.__exit_style.cycle()
                 self.__empty_style.cycle()
             if event.sym == "v":
                 self.__filler_style.cycle(-1)
                 self.__full_style.cycle(-1)
                 self.__path_style.cycle(-1)
+                self.__entry_style.cycle(-1)
+                self.__exit_style.cycle(-1)
                 self.__empty_style.cycle(-1)
             if event.sym == "p":
                 self.__draw_path = not self.__draw_path
@@ -136,7 +155,8 @@ class TTYTracker:
                 finally:
                     self.__paused = False
             if event.sym == "r":
-                self.redraw_path(self.__empty_style.curr_style())
+                empty = self.__empty_style.curr_style()
+                self.redraw_path(empty, empty, empty)
                 self.__path = None
                 raise MazeRegenerate
             else:

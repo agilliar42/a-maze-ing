@@ -368,6 +368,8 @@ def extract_pairs(
             config.tilemap_empty,
             config.tilemap_full,
             config.tilemap_path,
+            config.tilemap_entry,
+            config.tilemap_exit,
             config.tilemap_background,
         )
         for e in tilemaps
@@ -461,6 +463,8 @@ class TileMaps:
         self.empty: list[int] = list(map(add_style, config.tilemap_empty))
         self.full: list[int] = list(map(add_style, config.tilemap_full))
         self.path: list[int] = list(map(add_style, config.tilemap_path))
+        self.entry: list[int] = list(map(add_style, config.tilemap_entry))
+        self.exit: list[int] = list(map(add_style, config.tilemap_exit))
         self.filler: list[int] = list(
             map(
                 lambda e: add_style(e, config.tilemap_background_size),
@@ -549,7 +553,7 @@ class TTYBackend:
         self.__uninit: bool = True
         try:
             self.__screen: curses.window = curses.initscr()
-        except curses.error as e:
+        except curses.error:
             raise BackendException(
                 "Failed to initiate screen, "
                 + "check that your terminal is setup correctly"
