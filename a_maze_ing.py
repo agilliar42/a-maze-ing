@@ -63,7 +63,7 @@ pattern = Pattern(config.maze_pattern).centered_for(maze.dims, excluded)
 
 
 def maze_main() -> None:
-    pattern.fill(maze)
+    pattern.write_to_maze(maze)
     maze.outline()
 
     walls_const = set(maze.walls_full())

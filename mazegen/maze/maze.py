@@ -1,4 +1,4 @@
-from typing import Callable, Generator, Iterable
+from typing import Callable, Generator, Iterable, overload
 from mazegen.config.config_parser import Config
 from mazegen.utils import (
     CellCoord,
@@ -16,19 +16,30 @@ class Maze:
     Its observers are called whenever the status of a wall changes
     """
 
-    def __init__(self, config: Config) -> None:
-        self.dims = IVec2(config.width, config.height)
+    @overload
+    def __init__(self, config: Config) -> None: ...
+    @overload
+    def __init__(self, dims: IVec2, entry: IVec2, exit: IVec2, /) -> None: ...
+
+    def __init__(
+        self,
+        config: Config | IVec2,
+        entry: IVec2 = IVec2.splat(0),
+        exit: IVec2 = IVec2.splat(0),
+    ) -> None:
+        self.dims = (
+            IVec2(config.width, config.height)
+            if isinstance(config, Config)
+            else config
+        )
         self.observers: set[MazeObserver] = set()
-        self.entry: CellCoord = (
-            CellCoord(0, 0)
-            if config.entry is None
-            else CellCoord(config.entry)
-        )
-        self.exit: CellCoord = (
-            CellCoord(self.dims - IVec2.splat(1))
-            if config.exit is None
-            else CellCoord(config.exit)
-        )
+        self.entry: CellCoord = CellCoord(entry)
+        self.exit: CellCoord = CellCoord(exit)
+        if isinstance(config, Config):
+            if config.entry is not None:
+                self.entry = CellCoord(config.entry)
+            if config.exit is not None:
+                self.exit = CellCoord(config.exit)
         self.__walls_full: dict[WallCoord, None] = {}
 
     def get_wall(self, coord: WallCoord) -> bool:

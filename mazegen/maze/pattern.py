@@ -140,9 +140,9 @@ class Pattern:
                     return normalized.offset(pos)
         return Pattern([])
 
-    def fill(self, maze: "Maze") -> None:
+    def write_to_maze(self, maze: "Maze") -> None:
         """
-        Fills the pattern into the maze by filling the walls of each pattern
+        Writes the pattern into the maze by filling the walls of each pattern
         cell
         """
         for cell in self.__cells:
