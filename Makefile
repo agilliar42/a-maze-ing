@@ -13,12 +13,14 @@ run-prof:
 	flameprof out.prof > prof.svg
 
 run:
-	poetry run python a_maze_ing.py
+	poetry run python a_maze_ing.py minimal_visual.conf
 
 build:
 	poetry build -o .
 
 clean:
+	# sketchy rf rm
+	rm -rf __pycache__ **/__pycache__
 
 lint:
 	poetry run flake8 .

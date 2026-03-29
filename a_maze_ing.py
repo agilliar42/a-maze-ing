@@ -1,4 +1,4 @@
-from sys import stderr
+from sys import argv, stderr
 from typing import Never
 from mazegen.config.parser_combinator import ParseError
 from mazegen.display.observer import MazeRegenerate, TTYTracker
@@ -16,14 +16,26 @@ from mazegen.config.config_parser import Config, ConfigError
 from mazegen.maze.output import format_output
 import random
 
-config_filename = "./example.conf"
-config_str = open(config_filename).read()
-
 
 def error(s: str) -> Never:
-    print("Error:", file=stderr)
+    print("Error:\n", file=stderr)
     print(s, end="", file=stderr)
     exit(1)
+
+
+if len(argv) != 2:
+    error(
+        "  Invalid argument count, usage:\n"
+        + "\n"
+        + "    > python a_maze_ing.py <filename>\n"
+        + "\n"
+    )
+
+config_filename = argv[1]
+try:
+    config_str = open(config_filename).read()
+except IOError:
+    error(f"  Failed to read file {config_filename}\n\n")
 
 
 try:
