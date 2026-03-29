@@ -34,14 +34,20 @@ from .parser_combinator import (
 
 
 def parse_bool(s: str) -> ParseResult[bool]:
-    return alt(
-        value(True, tag("True")),
-        value(False, tag("False")),
+    return parser_map_err(
+        lambda e: ParseError("Expected boolean 'True' or 'False'", e.at),
+        alt(
+            value(True, tag("True")),
+            value(False, tag("False")),
+        ),
     )(s)
 
 
 def parse_int(s: str) -> ParseResult[int]:
-    return parser_map(int, recognize(many_count(ascii_digit, min_n=1)))(s)
+    return parser_map_err(
+        lambda e: ParseError("Expected integer literal", e.at),
+        parser_map(int, recognize(many_count(ascii_digit, min_n=1))),
+    )(s)
 
 
 def multispace0(s: str) -> ParseResult[str]:
@@ -50,10 +56,6 @@ def multispace0(s: str) -> ParseResult[str]:
 
 def parse_comment(s: str) -> ParseResult[str]:
     return recognize(seq(tag("#"), many_count(none_of("\n"))))(s)
-
-
-# def parse_empty_line(s: str) -> ParseResult[None]:
-#    return (None, s) if s.startswith("\n") else ParseError("temp", "temp")
 
 
 def spaced[T](parser: Parser[T]) -> Parser[T]:
@@ -87,7 +89,10 @@ def char_range(a: str, b: str) -> str:
 def parse_varname(s: str) -> ParseResult[str]:
     varstart = "_" + char_range("a", "z") + char_range("A", "Z")
     vartail = varstart + char_range("0", "9")
-    return recognize(seq(one_of(varstart), many_count(one_of(vartail))))(s)
+    return parser_map_err(
+        lambda e: ParseError("Expected color identifier", e.at),
+        recognize(seq(one_of(varstart), many_count(one_of(vartail)))),
+    )(s)
 
 
 type Color = tuple[int, int, int] | str
@@ -98,16 +103,22 @@ type Grouped[T] = tuple[int, T]
 
 
 def parse_color(s: str) -> ParseResult[Color]:
-    return cast(
-        ParseResult[Color],
-        alt(
-            parser_map(
-                tuple,
-                many(parse_int, 3, 3, spaced(tag(","))),
-            ),
-            parse_varname,
-        )(s),
+    cut_comma = spaced(
+        cut(lookahead_parser(tag(","), seq(multispace0, parse_int)))
     )
+    try:
+        return cast(
+            ParseResult[Color],
+            alt(
+                parser_map(
+                    tuple,
+                    many(parse_int, 3, 3, cut_comma),
+                ),
+                parse_varname,
+            )(s),
+        )
+    except ParseError as e:
+        return e
 
 
 def parse_color_pair(s: str) -> ParseResult[ColorPair]:
@@ -151,7 +162,12 @@ def parse_colored_line(
 
     return spaced(
         delimited(
-            tag('"'), many(pair(color_prefix, cut(noncolor_str))), tag('"')
+            tag('"'),
+            many(pair(color_prefix, cut(noncolor_str))),
+            parser_map_err(
+                lambda e: ParseError("Expected color prefix or '\"'", e.at),
+                tag('"'),
+            ),
         )
     )(s)
 
@@ -189,10 +205,7 @@ class ConfigField[T, U = T](ABC):
     def parse(self, s: str) -> ParseResult[T]: ...
 
     def default(self) -> U:
-        raise ConfigException(
-            f"Value {self.__name} not provided, "
-            + "and no default value exists"
-        )
+        raise ConfigException(f"Value {self.__name} not provided")
 
     @abstractmethod
     def merge(self, vals: list[T]) -> U: ...
@@ -336,7 +349,7 @@ def line_parser[T](
             parser_map(lambda _: None, parse_comment),
             *(
                 preceeded(
-                    seq(tag(name), multispace0, cut(tag("=")), multispace0),
+                    seq(tag(name), multispace0, tag("="), multispace0),
                     parser_map(
                         (lambda name: lambda res: (name, res))(name),
                         cut(terminated(field.parse, multispace0)),
@@ -356,7 +369,15 @@ def fields_parser(
 ) -> Parser[dict[str, Any]]:
     fields = {key: cls(key) for key, cls in fields_raw.items()}
     parse_line = nonempty_parser(
-        cut(terminated(line_parser(fields), alt(tag("\n"), eof_parser())))
+        cut(
+            terminated(
+                line_parser(fields),
+                parser_map_err(
+                    lambda e: ParseError("Expected newline or EOF", e.at),
+                    alt(tag("\n"), eof_parser()),
+                ),
+            )
+        )
     )
 
     def inner(s: str) -> ParseResult[dict[str, Any]]:

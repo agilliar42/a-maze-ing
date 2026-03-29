@@ -90,14 +90,8 @@ def parser_default[T](p: Parser[T], default: T) -> Parser[T]:
 
 def parser_complete[T](
     p: Parser[T],
-    msg: str = "Complete parser error: leftover characters",
 ) -> Parser[T]:
-    def inner(res: tuple[T, str]) -> ParseResult[T]:
-        if len(res[1]) != 0:
-            raise ParseError(msg, res[1])
-        return res
-
-    return lambda s: error_map(inner, p(s))
+    return terminated(p, eof_parser())
 
 
 def recognize[T](p: Parser[T]) -> Parser[str]:
@@ -117,20 +111,16 @@ def cut[T](p: Parser[T]) -> Parser[T]:
     return inner
 
 
-def tag(tag: str, msg: str | None = None) -> Parser[str]:
-    if msg is None:
-        msg = f"Expected tag {repr(tag)}"
+def tag(tag: str) -> Parser[str]:
     return lambda s: (
         (s[: len(tag)], s[len(tag) :])  # noqa E203
         if s.startswith(tag)
-        else ParseError(msg, s)
+        else ParseError(f"Expected tag {repr(tag)}", s)
     )
 
 
-def char(msg: str | None = None) -> Parser[str]:
-    if msg is None:
-        msg = f"Expected char {repr(tag)}"
-    return lambda s: (s[0], s[1:]) if len(s) > 0 else ParseError(msg, s)
+def char(s: str) -> ParseResult[str]:
+    return (s[0], s[1:]) if len(s) > 0 else ParseError("Early EOF", s)
 
 
 def null_parser(s: str) -> ParseResult[str]:
@@ -150,28 +140,28 @@ def lookahead_parser[T, U](p1: Parser[T], p2: Parser[U]) -> Parser[T]:
     return inner
 
 
-def eof_parser(msg: str = "Expected end of file") -> Parser[str]:
-    return lambda s: ("", "") if len(s) == 0 else ParseError(msg, s)
+def eof_parser() -> Parser[str]:
+    return lambda s: (
+        ("", "") if len(s) == 0 else ParseError("Expected EOF", s)
+    )
 
 
-def nonempty_parser[T](p: Parser[T], msg: str = "Expected non end of file"):
-    return lambda s: p(s) if len(s) > 0 else ParseError(msg, s)
+def nonempty_parser[T](p: Parser[T]) -> Parser[T]:
+    return lambda s: p(s) if len(s) > 0 else ParseError("Early EOF", s)
 
 
 def value[T, V](val: V, p: Parser[T]) -> Parser[V]:
     return parser_map(lambda _: val, p)
 
 
-def alt[T](
-    *choices: Parser[T], msg: str = "None of the following was met:"
-) -> Parser[T]:
+def alt[T](*choices: Parser[T]) -> Parser[T]:
     def inner(s: str) -> ParseResult[T]:
         acc: list[ParseError] = []
         for e in map(lambda p: p(s), choices):
             if not isinstance(e, ParseError):
                 return e
             acc.append(e)
-        return ParseError(msg, s, acc)
+        return ParseError("Expected any of the following to match:", s, acc)
 
     return inner
 
@@ -183,7 +173,6 @@ def fold[T, R](
     min_n: int = 0,
     max_n: int | None = None,
     sep: Parser[Any] = null_parser,
-    msg: Callable[[int], str] | None = None,
 ) -> Parser[R]:
     """
     Repeatedly call the p parser, folding the results using f, with an acc
@@ -191,31 +180,24 @@ def fold[T, R](
     Returns error if and only if min_n iterations are not reached
     """
 
-    if msg is None:
-        msg = (
-            lambda count: f"Expected at least {min_n} elements, got {count}, after error:"
-        )
-
     # no clean way to do this with lambdas i could figure out :<
     def inner(s: str) -> ParseResult[R]:
         curr_s = s
         acc = acc_init()
         count: int = 0
         curr_p: Parser[T] = p
-        err: list[ParseError] | None = None
         while max_n is None or count < max_n:
             nxt: ParseResult[T] = curr_p(curr_s)
             if isinstance(nxt, ParseError):
-                err = [nxt]
+                if count < min_n:
+                    return nxt
                 break
             if count == 0:
                 curr_p = preceeded(sep, p)
             count += 1
             acc = f(acc, nxt[0])
             curr_s = nxt[1]
-        return (
-            (acc, curr_s) if count >= min_n else ParseError(msg(count), s, err)
-        )
+        return (acc, curr_s)
 
     return inner
 
@@ -225,7 +207,6 @@ def many[T](
     min_n: int = 0,
     max_n: int | None = None,
     sep: Parser[Any] = null_parser,
-    msg: Callable[[int], str] | None = None,
 ) -> Parser[list[T]]:
     return fold(
         parser_map(lambda e: [e], p),
@@ -234,7 +215,6 @@ def many[T](
         min_n,
         max_n,
         sep,
-        msg,
     )
 
 
@@ -243,9 +223,8 @@ def many_count[T](
     min_n: int = 0,
     max_n: int | None = None,
     sep: Parser[Any] = null_parser,
-    msg: Callable[[int], str] | None = None,
 ) -> Parser[int]:
-    return fold(value(1, p), int.__add__, lambda: 0, min_n, max_n, sep, msg)
+    return fold(value(1, p), int.__add__, lambda: 0, min_n, max_n, sep)
 
 
 def seq[T](*parsers: Parser[T]) -> Parser[str]:
@@ -292,7 +271,7 @@ def one_of(chars: str) -> Parser[str]:
 
 def none_of(chars: str) -> Parser[str]:
     return lambda s: (
-        char()(s)
+        char(s)
         if isinstance(one_of(chars)(s), ParseError)
         else ParseError(f"Expected any character except {repr(chars)}", s)
     )
