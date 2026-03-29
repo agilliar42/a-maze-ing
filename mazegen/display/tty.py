@@ -358,8 +358,9 @@ def extract_pairs(
     """
     Extracts the color pairs from the config, and maps them to text
     attributes
-    May raise a backend exception if too many colors are used or an invalid
-    variable color is used
+    May raise a backend exception if too many colors are used, an invalid
+    variable color is used, or the terminal doesn't support setting colors
+    but custom colors were used
     """
     all_tilemaps = [
         e
@@ -397,6 +398,12 @@ def extract_pairs(
             raise BackendException("Unknown color " + var_color + " in config")
         res_colors[var_color] = color_lookup[var_color]
         available_colors -= {color_lookup[var_color]}
+    if len(value_colors) != 0 and not curses.can_change_color():
+        raise BackendException(
+            "Cannot set colors for terminal, "
+            + "please check that your terminal is configured correctly "
+            + "or only use named colors in config"
+        )
     if len(available_colors) < len(value_colors):
         raise BackendException(
             "Too many value color values in config: "
@@ -539,8 +546,15 @@ class TTYBackend:
             self.__dims * IVec2.splat(2) + IVec2.splat(1)
         )
 
-        self.__uninit: bool = False
-        self.__screen: curses.window = curses.initscr()
+        self.__uninit: bool = True
+        try:
+            self.__screen: curses.window = curses.initscr()
+        except curses.error as e:
+            raise BackendException(
+                "Failed to initiate screen, "
+                + "check that your terminal is setup correctly"
+            )
+        self.__uninit = False
         self.__screen.timeout(0)
         curses.start_color()
         curses.noecho()
@@ -548,7 +562,11 @@ class TTYBackend:
         curses.curs_set(0)
         self.__screen.keypad(True)
 
-        pair_map = extract_pairs(config)
+        try:
+            pair_map = extract_pairs(config)
+        except BackendException as e:
+            self.uninit()
+            raise e
         self.tilemaps = TileMaps(config, pair_map, self)
 
         self.__scratch: curses.window = curses.newpad(1, 1)

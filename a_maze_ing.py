@@ -1,5 +1,8 @@
+from sys import stderr
+from typing import Never
 from mazegen.config.parser_combinator import ParseError
 from mazegen.display.observer import MazeRegenerate, TTYTracker
+from mazegen.display.tty import BackendException
 from mazegen.maze import (
     Maze,
     Pattern,
@@ -9,17 +12,26 @@ from mazegen.maze import (
     make_pacman,
     make_perfect,
 )
-from mazegen.config.config_parser import Config
+from mazegen.config.config_parser import Config, ConfigError
 from mazegen.maze.output import format_output
 import random
 
 config_filename = "./example.conf"
 config_str = open(config_filename).read()
+
+
+def error(s: str) -> Never:
+    print("Error:", file=stderr)
+    print(s, end="", file=stderr)
+    exit(1)
+
+
 try:
     config = Config.parse(config_str)
 except ParseError as e:
-    print(e.pretty_format(config_str, config_filename))
-    exit(1)
+    error(e.pretty_format(config_str, config_filename))
+except ConfigError as e:
+    error(e.args[0] + "\n")
 
 if config.seed is not None:
     random.seed(config.seed)
@@ -28,7 +40,10 @@ maze = Maze(config)
 
 pacman_tracker = PacmanTracker(maze)
 network_tracker = NetworkTracker(maze)
-tty_tracker = TTYTracker(maze, config) if config.visual else None
+try:
+    tty_tracker = TTYTracker(maze, config) if config.visual else None
+except BackendException as e:
+    error(e.args[0] + "\n")
 
 excluded = {maze.entry, maze.exit}
 
