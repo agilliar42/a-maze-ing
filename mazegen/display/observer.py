@@ -182,3 +182,9 @@ class TTYTracker:
         self.__dirty_tracker.clear()
         self.poll_events()
         self.__backend.present()
+
+    def uninit(self) -> None:
+        """
+        Uninitializes the backed
+        """
+        self.__backend.uninit()

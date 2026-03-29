@@ -1,4 +1,5 @@
 from sys import stderr
+import time
 from typing import Never
 from mazegen.config.parser_combinator import ParseError
 from mazegen.display.observer import MazeRegenerate, TTYTracker
@@ -75,8 +76,13 @@ if config.visual:
 
             maze_main()
 
-            with open(config.output_file, "w") as f:
-                f.write(format_output(maze))
+            try:
+                with open(config.output_file, "w") as f:
+                    f.write(format_output(maze))
+            except IOError:
+                if tty_tracker is not None:
+                    tty_tracker.uninit()
+                error(f"Failed to write to file {config.output_file}\n")
 
             while tty_tracker is not None:
                 tty_tracker.display_maze(wait_for_tick=True)
