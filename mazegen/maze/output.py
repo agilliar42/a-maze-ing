@@ -4,6 +4,9 @@ from mazegen.maze.path import pathfind_astar
 
 
 def to_hex(cell: list[bool]) -> str:
+    """
+    Converts a list of bits to a hex digit
+    """
     val = (
         (1 if cell[0] else 0)
         + (2 if cell[1] else 0)
@@ -14,6 +17,9 @@ def to_hex(cell: list[bool]) -> str:
 
 
 def format_maze(maze: Maze) -> str:
+    """
+    Formats the maze to a string in with hex cells as specified by the subject
+    """
     dims = maze.dims
     maze_str = ""
     for y in range(dims.y):
@@ -29,12 +35,19 @@ def format_maze(maze: Maze) -> str:
 
 
 def format_doors(maze: Maze) -> str:
+    """
+    Formats the entry and exit to a string as specified by the subject
+    """
     entry = f"{maze.entry.x},{maze.entry.y}\n"
     exit = f"{maze.exit.x},{maze.exit.y}\n"
     return entry + exit
 
 
 def format_path(maze: Maze) -> str:
+    """
+    Formats the shortest path in the maze to a direction string as specificer
+    by the subject
+    """
     path = pathfind_astar(maze)
     if path is None:
         raise Exception("Could not pathfind!")
@@ -42,4 +55,7 @@ def format_path(maze: Maze) -> str:
 
 
 def format_output(maze: Maze) -> str:
+    """
+    Formats the maze to an output string as the subject asks
+    """
     return format_maze(maze) + "\n" + format_doors(maze) + format_path(maze)

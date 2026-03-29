@@ -7,11 +7,17 @@ type tuple4[T] = tuple[T, T, T, T]
 
 
 def map4[T, U](fn: Callable[[T], U], tup: tuple4[T]) -> tuple4[U]:
+    """
+    Like map, but typed for a tuple4
+    """
     a, b, c, d = tup
     return (fn(a), fn(b), fn(c), fn(d))
 
 
 def zip4[T, U](a: tuple4[T], b: tuple4[U]) -> tuple4[tuple[T, U]]:
+    """
+    Like zip, but typed for a tuple4
+    """
     a1, b1, c1, d1 = a
     a2, b2, c2, d2 = b
     return ((a1, a2), (b1, b2), (c1, c2), (d1, d2))
@@ -25,6 +31,9 @@ type Rect = tuple[IVec2, IVec2]
 
 
 def rects_overlap(a: Rect, b: Rect) -> bool:
+    """
+    Checks whether two rectangles overlap
+    """
     a_start, a_end = a
     b_start, b_end = b
     return (
@@ -36,6 +45,9 @@ def rects_overlap(a: Rect, b: Rect) -> bool:
 
 
 def rect_collides(a: Rect, b: IVec2) -> bool:
+    """
+    Checks whether two rectangles collide
+    """
     a_start, a_end = a
     return (
         a_end.x > b.x
@@ -46,6 +58,9 @@ def rect_collides(a: Rect, b: IVec2) -> bool:
 
 
 def rect_contains(a: Rect, b: Rect) -> bool:
+    """
+    Checks whether a rect contains another
+    """
     a_start, a_end = a
     b_start, b_end = b
     return (
@@ -57,6 +72,10 @@ def rect_contains(a: Rect, b: Rect) -> bool:
 
 
 class Tree:
+    """
+    A boolean quadtree, with simplification for identical subcells
+    """
+
     def __init__(self, copy: "Tree | None" = None) -> None:
         self.__root: MaybeNode = False
         self.__height: int = 0
@@ -72,6 +91,10 @@ class Tree:
         return f"Quadtree: height - {self.__height}, data:\n{data}"
 
     def raised_to(self, target: int) -> "Tree":
+        """
+        Increase the height of this tree and extend it to reach at least
+        target height
+        """
         res = Tree(self)
         while res.__height < target:
             res.__root = (self.__root, False, False, False)
@@ -79,6 +102,10 @@ class Tree:
         return res
 
     def normalized(self) -> "Tree":
+        """
+        Lowers the tree for as long as can be simplified, to reach a canonical
+        form
+        """
         res = Tree(self)
         while True:
             match res.__root:
@@ -94,6 +121,10 @@ class Tree:
     def shared_layer_apply(
         self, fn: Callable[[MaybeNode, MaybeNode], MaybeNode], other: "Tree"
     ) -> "Tree":
+        """
+        Applies the given function between two nodes that are at the same
+        layer and thus position
+        """
         res = self.raised_to(other.__height)
 
         def descend(node: MaybeNode, depth: int = 0) -> MaybeNode:
@@ -125,6 +156,10 @@ class Tree:
     def node_tiles(
         node: MaybeNode, pos: IVec2, height: int
     ) -> Generator[IVec2]:
+        """
+        Iterates over the tile coords of a given node with a given position
+        and height
+        """
         if height == 0 and node is True:
             yield pos
         if height == 0 or node is False:
@@ -137,6 +172,9 @@ class Tree:
 
     @staticmethod
     def rectangle(rect: Rect) -> "Tree":
+        """
+        Creates a tree that contains exactly a rectangle
+        """
         res = Tree()
         while (s := 1 << res.__height) < rect[1].x or s < rect[1].y:
             res.__height += 1
@@ -145,6 +183,9 @@ class Tree:
 
     @staticmethod
     def node_to_tab(node: MaybeNode, height: int) -> list[list[bool]]:
+        """
+        Creates a two dimensional array of booleans corresponding to this node
+        """
         if isinstance(node, bool):
             dim = 1 << height
             return [[node for _ in range(dim)] for _ in range(dim)]
@@ -160,6 +201,9 @@ class Tree:
 
     @staticmethod
     def node_normalize(node: MaybeNode) -> MaybeNode:
+        """
+        Normalize this node by simlpifying when possible
+        """
         match node:
             case (True, True, True, True):
                 return True
@@ -169,6 +213,9 @@ class Tree:
 
     @staticmethod
     def node_split(node: MaybeNode) -> Node:
+        """
+        Split this node once, unsimplifying it
+        """
         match node:
             case True:
                 return (True, True, True, True)
@@ -178,6 +225,10 @@ class Tree:
 
     @staticmethod
     def node_from_rect(pos: IVec2, height: int, rect: Rect) -> MaybeNode:
+        """
+        Creates a node from a rectangle and is position, such that it fills
+        its overlapping region with that rectagle
+        """
         node_rect = Tree.node_rect(pos, height)
         if rect_contains(rect, node_rect):
             return True
@@ -191,10 +242,16 @@ class Tree:
 
     @staticmethod
     def node_rect(pos: IVec2, height: int) -> Rect:
+        """
+        Returns the rectangle corresponding to a node's position and height
+        """
         return (pos, pos + IVec2.splat(1 << height))
 
     @staticmethod
     def node_starts(pos: IVec2, height: int) -> tuple4[IVec2]:
+        """
+        Return the start of each sub-node of a node
+        """
         dim = 1 << (height - 1)
         x = IVec2(dim, 0)
         y = IVec2(0, dim)
@@ -208,12 +265,18 @@ class Tree:
 
     @staticmethod
     def node_neg(node: MaybeNode) -> MaybeNode:
+        """
+        Inverts a node
+        """
         if isinstance(node, bool):
             return not node
         return map4(Tree.node_neg, node)
 
     @staticmethod
     def node_or(a: MaybeNode, b: MaybeNode) -> MaybeNode:
+        """
+        Applies a boolean or between two nodes
+        """
         match (a, b):
             case (True, _) | (_, True):
                 return True
@@ -228,6 +291,9 @@ class Tree:
 
     @staticmethod
     def node_and(a: MaybeNode, b: MaybeNode) -> MaybeNode:
+        """
+        Applies a boolean and between two nodes
+        """
         match (a, b):
             case (False, _) | (_, False):
                 return False
@@ -242,6 +308,9 @@ class Tree:
 
     @staticmethod
     def node_sub(a: MaybeNode, b: MaybeNode) -> MaybeNode:
+        """
+        Substracts another node from a first
+        """
         match (a, b):
             case (False, _) | (_, True):
                 return False

@@ -1,4 +1,3 @@
-from collections.abc import Generator
 from dataclasses import dataclass
 from mazegen.maze.maze import Maze
 from mazegen.utils.coords import Cardinal, CellCoord
@@ -7,6 +6,9 @@ import heapq
 
 
 def taxicab_distance(a: IVec2, b: IVec2) -> int:
+    """
+    Returns the taxicab/manhattan distance between two points
+    """
     return sum(a.with_op(lambda lhs, rhs: abs(lhs - rhs), b).xy())
 
 
@@ -15,6 +17,11 @@ type LinkPath = None | tuple[Cardinal, LinkPath]
 
 @dataclass(slots=True)
 class AStarStep:
+    """
+    A step in A* pathfinding, containing the previously traversed path as
+    well as distance heuristics for the grid
+    """
+
     dst: CellCoord
     path: LinkPath
     path_length: int
@@ -27,6 +34,10 @@ class AStarStep:
         )
 
     def append(self, card: Cardinal, dst: CellCoord) -> "AStarStep":
+        """
+        Adds the current direction to the path and returns it, with target
+        coord dst
+        """
         next_dst = self.dst.get_neighbour(card)
         next_path = (card, self.path)
         next_dist = self.path_length + 1
@@ -34,9 +45,15 @@ class AStarStep:
         return AStarStep(next_dst, next_path, next_dist, next_min_dist)
 
     def ends_in_bounds(self, maze: Maze) -> bool:
+        """
+        Checks whether this step ends within the maze
+        """
         return maze.check_cell(self.dst)
 
     def to_path(self) -> list[Cardinal]:
+        """
+        Turns this step to a path as a list of cardinal directions
+        """
         curr = self.path
         res = []
         while curr is not None:
@@ -47,6 +64,9 @@ class AStarStep:
 
 
 def pathfind_astar(maze: Maze) -> list[Cardinal] | None:
+    """
+    Finds the shortest path between the entrance and exit using A*
+    """
     src = maze.entry
     dst = maze.exit
     queue = [AStarStep(src, None, 0, taxicab_distance(src, dst))]
@@ -65,12 +85,3 @@ def pathfind_astar(maze: Maze) -> list[Cardinal] | None:
             visited.add(nxt.dst)
             heapq.heappush(queue, nxt)
     return None
-
-
-def path_pixels(curr: CellCoord, path: list[Cardinal]) -> Generator[IVec2]:
-    yield curr.tile_coords()
-    for card in path:
-        nxt = curr.get_neighbour(card)
-        yield (curr.tile_coords() + nxt.tile_coords()) // IVec2.splat(2)
-        yield nxt.tile_coords()
-        curr = nxt

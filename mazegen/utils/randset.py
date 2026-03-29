@@ -3,6 +3,11 @@ from typing import cast, overload
 
 
 class Randset[T](MutableSequence[T], MutableSet[T]):
+    """
+    A simple datastructure that acts as a set but also allows allows random
+    popping and indexing
+    """
+
     def __init__(self) -> None:
         self.__elems: list[T] = []
         self.__idx_map: dict[T, int] = {}

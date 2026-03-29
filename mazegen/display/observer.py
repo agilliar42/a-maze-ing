@@ -3,7 +3,7 @@ from mazegen.config.config_parser import Config
 from mazegen.display.tty import TTYBackend, TileCycle
 from mazegen.maze.dirty_tracker import DirtyTracker
 from mazegen.maze.maze import Maze
-from mazegen.maze.path import path_pixels, pathfind_astar
+from mazegen.maze.path import pathfind_astar
 from mazegen.utils.coords import Cardinal
 
 
@@ -12,6 +12,15 @@ class MazeRegenerate(Exception):
 
 
 class TTYTracker:
+    """
+    A tracker which may be added to a maze to make it output to tty
+    This class probably is doing too much but a refactor sounds more painful
+
+    This manages the different styles for use in interactively cycling them,
+    manages the shortest path drawing, pause status, and redrawing only at
+    specific intervals
+    """
+
     def __init__(
         self,
         maze: Maze,
@@ -47,6 +56,9 @@ class TTYTracker:
         self.update: bool = True
 
     def clear_backend(self) -> None:
+        """
+        Draws as empty the walls that have been made empty since last redraw
+        """
         self.__backend.set_style(self.__empty_style.curr_style())
         for wall in self.__dirty_tracker.curr_dirty():
             if self.__maze.get_wall(wall):
@@ -55,6 +67,9 @@ class TTYTracker:
                 self.__backend.draw_tile(tile)
 
     def path_invalidated(self) -> bool:
+        """
+        Returns whether the previous path was invalidated since last redraw
+        """
         if self.__path is None:
             return True
         src = self.__maze.entry
@@ -65,12 +80,18 @@ class TTYTracker:
         return False
 
     def redraw_path(self, style: int) -> None:
+        """
+        Draws the current path with the given style
+        """
         if self.__path is not None:
             self.__backend.set_style(style)
-            for tile in path_pixels(self.__maze.entry, self.__path):
+            for tile in Cardinal.path_to_tiles(self.__path, self.__maze.entry):
                 self.__backend.draw_tile(tile)
 
     def display_path(self) -> None:
+        """
+        Updates, and redraws if needed, the current path
+        """
         if (
             all(map(self.__maze.get_wall, self.__dirty_tracker.curr_dirty()))
             and not self.path_invalidated()
@@ -83,6 +104,10 @@ class TTYTracker:
         self.redraw_path(self.__path_style.curr_style())
 
     def poll_events(self) -> None:
+        """
+        Consumes and processes all the keyboard events
+        Raises a MazeRegenerate exception if the user requested it
+        """
         while True:
             event = self.__backend.event()
             if isinstance(event, bool):
@@ -118,6 +143,11 @@ class TTYTracker:
                 continue
 
     def display_maze(self, wait_for_tick: bool = False) -> None:
+        """
+        Processes backend events and redraws this backend if the frametime
+        was elapsed
+        Raises MazeRegenerate exception if the user requested it
+        """
         now = time.monotonic()
         if self.__tick is not None:
             if wait_for_tick:
@@ -142,7 +172,7 @@ class TTYTracker:
             e
             for wall in self.__dirty_tracker.curr_dirty()
             for e in wall.neighbours()
-            if self.__maze.check_coord(e) and self.__maze.get_wall(e)
+            if self.__maze.check_wall(e) and self.__maze.get_wall(e)
         }
 
         self.__backend.set_style(self.__full_style.curr_style())

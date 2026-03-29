@@ -31,6 +31,10 @@ class KeyboardInput:
 
 
 class ITile(ABC):
+    """
+    The ABC for a tile, for use with screens
+    """
+
     @abstractmethod
     def size(self) -> IVec2: ...
     @abstractmethod
@@ -43,6 +47,9 @@ class ITile(ABC):
     def blit(
         self, src: IVec2, dst: IVec2, size: IVec2, window: curses.window
     ) -> None:
+        """
+        Copies data from self into the window
+        """
         if size.x <= 0 or size.y <= 0:
             return
 
@@ -56,6 +63,10 @@ class ITile(ABC):
     def blit_iter(
         self, src: IVec2, dst: IVec2, size: IVec2
     ) -> Generator[tuple[IVec2, "SubPixel"]]:
+        """
+        Generator of the coords that would be drawn through a blit, as well
+        as subpixels for said blit
+        """
         for y in range(size.y):
             for x in range(size.x):
                 pos = IVec2(x, y)
@@ -68,6 +79,11 @@ class ITile(ABC):
         size: IVec2,
         justify: IVec2,
     ) -> Generator[tuple[IVec2, "SubTile"]]:
+        """
+        Iterates over the subtiles that a wrapping blit would go through,
+        as well as where they would be blitted to
+        """
+
         def size_offset_iter(
             start: int, size: int, mod: int
         ) -> Generator[tuple[int, int]]:
@@ -100,6 +116,9 @@ class ITile(ABC):
         window: curses.window,
         justify: IVec2 = IVec2.splat(0),
     ) -> None:
+        """
+        Blits self to the window, wrapping the tile
+        """
         for pos, subtile in self.blit_wrapping_subtiles(
             src, dst, size, justify
         ):
@@ -112,6 +131,9 @@ class ITile(ABC):
         size: IVec2,
         justify: IVec2 = IVec2.splat(0),
     ) -> Generator[tuple[IVec2, "SubPixel"]]:
+        """
+        An iterator over the subpixels a wrapping blit would write
+        """
         for pos, subtile in self.blit_wrapping_subtiles(
             src, dst, size, justify
         ):
@@ -120,6 +142,10 @@ class ITile(ABC):
 
 
 class Tile(ITile):
+    """
+    A simple tile that is its entire pad, initliazed from pixel values
+    """
+
     def __init__(
         self, pixels: list[list[tuple[str, int]]], dims: IVec2
     ) -> None:
@@ -153,6 +179,10 @@ class Tile(ITile):
 
 
 class SubPixel(ITile):
+    """
+    A tile that is just one pixel of its pad
+    """
+
     def __init__(self, tile: ITile, pos: IVec2) -> None:
         super().__init__(tile.pad)
         self.__pos: IVec2 = tile.pos() + pos
@@ -165,6 +195,10 @@ class SubPixel(ITile):
 
 
 class SubTile(ITile):
+    """
+    A tile that is a sub-section of its pad
+    """
+
     def __init__(self, tile: ITile, pos: IVec2, size: IVec2) -> None:
         super().__init__(tile.pad)
         self.__pos: IVec2 = tile.pos() + pos
@@ -178,36 +212,59 @@ class SubTile(ITile):
 
 
 class MazeTileMap:
+    """
+    A tilemap of tiles, for use in displaying
+    """
+
     def __init__(self, wall_dim: IVec2, cell_dim: IVec2) -> None:
         self.__wall_dim: IVec2 = wall_dim
         self.__cell_dim: IVec2 = cell_dim
         self.tiles: list[ITile] = []
 
     def add_tile(self, tile: ITile) -> int:
+        """
+        Adds a tile to the tilemap and returns its index
+        """
         res = len(self.tiles)
         self.tiles.append(tile)
         return res
 
     def dst_coord(self, pos: IVec2) -> IVec2:
+        """
+        Returns the coordinate in the output window from a tile coordinate
+        """
         return (n := pos // IVec2.splat(2)) * self.__cell_dim + (
             pos - n
         ) * self.__wall_dim
 
     def src_coord(self, pos: IVec2) -> IVec2:
+        """
+        Returns the coordinate in a tile in the tilemap from a tile coordinate
+        """
         return pos % IVec2.splat(2) * self.__wall_dim
 
     def dst_coord_rev(self, pixel: IVec2) -> IVec2:
+        """
+        Returns the coordinate of a tile from the coordinate in the
+        destination window
+        """
         mod = self.__wall_dim + self.__cell_dim
         return (pixel // mod) * IVec2.splat(2) + (pixel % mod).with_op(
             lambda a, b: 0 if a < b else 1, self.__wall_dim
         )
 
     def tile_size(self, pos: IVec2) -> IVec2:
+        """
+        Returns the size of the destination tile for a given tile coord
+        """
         return (pos + IVec2.splat(1)) % IVec2.splat(
             2
         ) * self.__wall_dim + pos % IVec2.splat(2) * self.__cell_dim
 
     def draw_at(self, at: IVec2, idx: int, window: curses.window) -> None:
+        """
+        Draws the given tile at tile position into the window
+        """
         self.tiles[idx].blit(
             self.src_coord(at),
             self.dst_coord(at),
@@ -223,10 +280,19 @@ class MazeTileMap:
         idx: int,
         window: curses.window,
     ) -> None:
+        """
+        Draws the given tile to an area in the window specified in pixel
+        coord, wrapping
+        """
         self.tiles[idx].blit_wrapping(start, at, into, window)
 
 
 class ScrollablePad:
+    """
+    A pad that may be used for display objects too large to fit, which may be
+    scrolled
+    """
+
     def __init__(
         self,
         dims: IVec2,
@@ -244,11 +310,17 @@ class ScrollablePad:
         return IVec2(x, y)
 
     def clamp(self, dims: IVec2) -> None:
+        """
+        Clamps this tile's coordinates to fit within dims, not scrolling past
+        """
         self.__pos = self.__pos.lane_max(dims - self.dims()).lane_min(
             IVec2.splat(0)
         )
 
     def present(self, at: IVec2, into: IVec2, window: curses.window) -> None:
+        """
+        Draws this pad at the location on the window
+        """
         if self.constrained:
             self.clamp(into)
 
@@ -268,15 +340,27 @@ class ScrollablePad:
         )
 
     def move(self, by: IVec2) -> None:
+        """
+        Moves the tile itself, opposite of scroll
+        """
         self.__pos = self.__pos + by
 
     def scroll(self, by: IVec2) -> None:
+        """
+        Scrolls through the tile, opposite of move
+        """
         self.move(by * IVec2.splat(-1))
 
 
 def extract_pairs(
     config: Config, extra_colors: Iterable[ColorPair] = []
 ) -> dict[ColorPair, int]:
+    """
+    Extracts the color pairs from the config, and maps them to text
+    attributes
+    May raise a backend exception if too many colors are used or an invalid
+    variable color is used
+    """
     all_tilemaps = [
         e
         for tilemaps in (
@@ -341,6 +425,10 @@ def extract_pairs(
 
 
 class TileMaps:
+    """
+    A class to store all the tilemaps once extracted from the config
+    """
+
     def __init__(
         self,
         config: Config,
@@ -396,6 +484,10 @@ class TileMaps:
 
 
 class TileCycle[T]:
+    """
+    A store of tile styles, used to cycle through them
+    """
+
     def __init__(
         self, styles: list[T], cb: Callable[[T], None], i: int = 0
     ) -> None:
@@ -407,16 +499,31 @@ class TileCycle[T]:
         cb(styles[i])
 
     def cycle(self, by: int = 1) -> None:
+        """
+        Cycles the current style by a given amount
+        """
         new = abs((self.__i + by) % len(self.__styles))
         if new != self.__i:
             self.__cb(self.__styles[new])
         self.__i = new
 
     def curr_style(self) -> T:
+        """
+        Returns the current style
+        """
         return self.__styles[self.__i]
 
 
 class TTYBackend:
+    """
+    This class stores a lot of things, which may be better split but that's
+    a lot of work
+    This initializes everything required for the display, that is, the
+    tilemaps, the curses api, the color pairs, and the entire window
+    layout
+    May raise a BackendException if it fails to excract colors
+    """
+
     def __init__(
         self,
         config: Config,
@@ -569,6 +676,9 @@ class TTYBackend:
         self.uninit()
 
     def uninit(self) -> None:
+        """
+        Uninitializes self, such resetting the terminal to its previous state
+        """
         if self.__uninit:
             return
         self.__uninit = True
@@ -579,6 +689,10 @@ class TTYBackend:
         curses.endwin()
 
     def pad_callback(self, rect: Rect) -> None:
+        """
+        The function to be called with the window area where the maze pad
+        should be drawn
+        """
         start, end_excl = rect
         drawn_rect = (
             self.__tilemap.dst_coord_rev(start),
@@ -598,6 +712,9 @@ class TTYBackend:
         self.__drawn += drawn_tree
 
     def set_filler(self, style: int) -> None:
+        """
+        Changes the filler style used for the window layout
+        """
         if self.__filler == style:
             return
         self.__redraw = True
@@ -606,12 +723,23 @@ class TTYBackend:
             box.mark_dirty()
 
     def set_bg_init(self, bg_init: Callable[[IVec2], int]) -> None:
+        """
+        Sets the function for use to initialize the background of the maze
+        """
         self.__bg_init = bg_init
 
     def get_style_height(self, style: int) -> int:
+        """
+        Returns the tree height of the given style, if zero it means
+        no tile uses this style
+        """
         return self.__style_bimap.get(style).height()
 
     def map_style(self, src: int, dst: int) -> None:
+        """
+        Maps the src style to dst, such that any tile with src style currently
+        will be redrawn with dst from now on
+        """
         if src == dst:
             return
         if self.get_style_height(src) != 0:
@@ -620,6 +748,10 @@ class TTYBackend:
             self.__style_bimap.key_map(src, dst)
 
     def map_style_cb(self) -> Callable[[int], None]:
+        """
+        The callback to use when one wants to initliaze then map consecutive
+        styles, for use with tile cycles
+        """
         curr: int | None = None
 
         def inner(new: int) -> None:
@@ -632,21 +764,36 @@ class TTYBackend:
         return inner
 
     def add_style(self, style: ITile) -> int:
+        """
+        Adds the given style to the tilemap, and returns its index
+        """
         return self.__tilemap.add_tile(style)
 
     def dims(self) -> IVec2:
+        """
+        Returns the dimensions of the maze
+        """
         return self.__dims
 
     def draw_tile(self, pos: IVec2) -> None:
+        """
+        Draws a tile at the pos with the current style
+        """
         style = self.__style
         self.__style_bimap.add(style, pos)
         self.__tilemap.draw_at(pos, style, self.__pad.pad)
         self.__redraw = True
 
     def set_style(self, style: int) -> None:
+        """
+        Sets the current style
+        """
         self.__style = style
 
     def present(self) -> None:
+        """
+        Redraw and layout the screen
+        """
         if not self.__redraw:
             return
         self.__redraw = False
@@ -657,6 +804,10 @@ class TTYBackend:
         self.__scratch.overwrite(self.__screen)
 
     def event(self) -> KeyboardInput | bool:
+        """
+        Poll for a keyboard input, some of which may already get handled
+        for scrolling
+        """
         try:
             key = self.__screen.getkey()
         except curses.error:

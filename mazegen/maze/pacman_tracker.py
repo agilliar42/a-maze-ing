@@ -4,6 +4,10 @@ from mazegen.utils import Randset, WallCoord
 
 
 class PacmanTracker:
+    """
+    A simple tracker that keeps track of dirty cells for impass removal
+    """
+
     def __init__(self, maze: Maze) -> None:
         self.__maze: Maze = maze
         self.__dirty: Randset[WallCoord] = Randset()
@@ -21,12 +25,21 @@ class PacmanTracker:
                 self.__dirty.add(e)
 
     def clear(self) -> Randset[WallCoord]:
+        """
+        Clears the current set of dirty walls and returns it
+        """
         res = self.__dirty
         self.__dirty = Randset()
         return res
 
     def curr_dirty(self) -> Iterable[WallCoord]:
+        """
+        Returns an iterator over the currently dirty elements
+        """
         return self.__dirty
 
     def end(self) -> None:
+        """
+        Removes this tracker's observer from the maze
+        """
         self.__maze.observers.discard(self.__observer)

@@ -34,6 +34,9 @@ from .parser_combinator import (
 
 
 def parse_bool(s: str) -> ParseResult[bool]:
+    """
+    Parses a boolean, with its first letter a capital
+    """
     return parser_map_err(
         lambda e: ParseError("Expected boolean 'True' or 'False'", e.at),
         alt(
@@ -44,6 +47,9 @@ def parse_bool(s: str) -> ParseResult[bool]:
 
 
 def parse_int(s: str) -> ParseResult[int]:
+    """
+    Parses an unsigned integer
+    """
     return parser_map_err(
         lambda e: ParseError("Expected integer literal", e.at),
         parser_map(int, recognize(many_count(ascii_digit, min_n=1))),
@@ -51,24 +57,38 @@ def parse_int(s: str) -> ParseResult[int]:
 
 
 def multispace0(s: str) -> ParseResult[str]:
+    """
+    Parses zero or more spaces or tabs
+    """
     return recognize(many_count(one_of(" \t")))(s)
 
 
 def parse_comment(s: str) -> ParseResult[str]:
+    """
+    Parses a python-style comment, that is a `#`, and all following characters
+    up to a newline
+    """
     return recognize(seq(tag("#"), many_count(none_of("\n"))))(s)
 
 
 def spaced[T](parser: Parser[T]) -> Parser[T]:
+    """
+    Makes the given parser be surrounded by multispace0, allowing for spaces
+    before and after
+    """
     return delimited(multispace0, parser, multispace0)
 
 
 def parse_coord(s: str) -> ParseResult[IVec2]:
+    """
+    Parses coordinates, that is two int separated by a spaced comma
+    """
     return parser_map(
         lambda e: IVec2(*e),
         pair(
             terminated(
                 parse_int,
-                delimited(multispace0, tag(","), multispace0),
+                spaced(tag(",")),
             ),
             parse_int,
         ),
@@ -76,10 +96,17 @@ def parse_coord(s: str) -> ParseResult[IVec2]:
 
 
 def parse_path(s: str) -> ParseResult[str]:
+    """
+    Parses a file path, which simply recognizes any character except a newline
+    Requires at least one character
+    """
     return recognize(many_count(none_of("\n"), min_n=1))(s)
 
 
 def char_range(a: str, b: str) -> str:
+    """
+    A simple function to create a string from a range of characters
+    """
     res = ""
     for c in range(ord(a), ord(b) + 1):
         res = res + chr(c)
@@ -87,6 +114,10 @@ def char_range(a: str, b: str) -> str:
 
 
 def parse_varname(s: str) -> ParseResult[str]:
+    """
+    Parses a variable name, that is one alphabetic or underscore character,
+    followed by zero or more alphanumeric or unerscore characters
+    """
     varstart = "_" + char_range("a", "z") + char_range("A", "Z")
     vartail = varstart + char_range("0", "9")
     return parser_map_err(
@@ -103,6 +134,10 @@ type Grouped[T] = tuple[int, T]
 
 
 def parse_color(s: str) -> ParseResult[Color]:
+    """
+    Parses a color, which is either a variable name, or three integers
+    separated by spaced comma
+    """
     cut_comma = spaced(
         cut(lookahead_parser(tag(","), seq(multispace0, parse_int)))
     )
@@ -122,6 +157,9 @@ def parse_color(s: str) -> ParseResult[Color]:
 
 
 def parse_color_pair(s: str) -> ParseResult[ColorPair]:
+    """
+    Parses a color pair, that is two colors separated by a spaced colon
+    """
     return cast(
         ParseResult[ColorPair],
         parser_map(
@@ -135,7 +173,9 @@ def parse_colored_line(
     s: str,
 ) -> ParseResult[ColoredLine]:
     """
-    returns a list of a color pair variable associated with its string
+    Parses a colored line, that is a sequence of possibly escaped strings
+    of characters, each preceeded by a color pair surrounded by braces,
+    all of which is surrounded by double quotes
     """
 
     color_prefix = delimited(
@@ -173,6 +213,9 @@ def parse_colored_line(
 
 
 def parse_str_line(s: str) -> ParseResult[str]:
+    """
+    Parses a single line string with no escapes
+    """
     return spaced(
         delimited(
             tag('"'),
@@ -187,14 +230,26 @@ def parse_str_line(s: str) -> ParseResult[str]:
 
 
 def grouped_parser[T](parser: Parser[T]) -> Parser[Grouped[T]]:
+    """
+    Returns a parser that first parses a spaced int, or assumes zero, followed
+    by the given parser, giving a tuple of the two
+    """
     return pair(alt(spaced(parse_int), value(0, null_parser)), parser)
 
 
-class ConfigException(Exception):
-    pass
+class ConfigError(Exception):
+    """
+    A simple exception for filtering, raised when a field is set an invalid
+    amount of times, or when certain config invariants are not held up
+    """
 
 
 class ConfigField[T, U = T](ABC):
+    """
+    A field in the config, defining methods to parse it, and how to resolve
+    multiple definitions
+    """
+
     def __init__(
         self,
         name: str,
@@ -205,7 +260,7 @@ class ConfigField[T, U = T](ABC):
     def parse(self, s: str) -> ParseResult[T]: ...
 
     def default(self) -> U:
-        raise ConfigException(f"Value {self.__name} not provided")
+        raise ConfigError(f"Value {self.__name} not provided")
 
     @abstractmethod
     def merge(self, vals: list[T]) -> U: ...
@@ -215,32 +270,54 @@ class ConfigField[T, U = T](ABC):
 
 
 class SimpleField[T](ConfigField[T, T]):
+    """
+    A simlpe imlpementation of ConfigField, simply using the default if no
+    value was provided, giving the value if only one was specified, raising
+    an error otherwise
+    """
+
     def merge(self, vals: list[T]) -> T:
         if len(vals) == 0:
             return self.default()
         if len(vals) == 1:
             return vals[0]
-        raise ConfigException(
+        raise ConfigError(
             f"More than one definition of config field {self.__name}"
         )
 
 
 class IntField(SimpleField[int]):
+    """
+    A config field that parses an integer
+    """
+
     def parse(self, s: str) -> ParseResult[int]:
         return parse_int(s)
 
 
 class BoolField(SimpleField[bool]):
+    """
+    A config field that parses a boolean
+    """
+
     def parse(self, s: str) -> ParseResult[bool]:
         return parse_bool(s)
 
 
 class CoordField(SimpleField[IVec2]):
+    """
+    A config field that parses a coordinate
+    """
+
     def parse(self, s: str) -> ParseResult[IVec2]:
         return parse_coord(s)
 
 
 class PathField(SimpleField[str]):
+    """
+    A config field that parses a file path
+    """
+
     def parse(self, s: str) -> ParseResult[str]:
         return parse_path(s)
 
@@ -248,12 +325,19 @@ class PathField(SimpleField[str]):
 def OptionalField[T, U](
     cls: Type[ConfigField[T, U]],
 ) -> Type[ConfigField[T, U | None]]:
+    """
+    Maps the config field to be None, resovling to it if no value was given
+    """
     return DefaultedField(cls, None)
 
 
 def DefaultedField[T, U](
     cls: Type[ConfigField[T, U]], default: U
 ) -> Type[ConfigField[T, U]]:
+    """
+    Maps the config field to resovle to a default if no value was given
+    """
+
     class Inner(cls):  # type: ignore
         def default(self) -> U:
             return default
@@ -267,6 +351,11 @@ def DefaultedField[T, U](
 def DefaultedStrField[T, U](
     cls: Type[ConfigField[T, U]], default_strs: list[str]
 ) -> Type[ConfigField[T, U]]:
+    """
+    Same as DefaultedField except the default value is parsed from the list
+    of strings
+    """
+
     class Inner(cls):  # type: ignore
         def default(self) -> U:
             acc = []
@@ -288,6 +377,10 @@ def DefaultedStrField[T, U](
 def MappedField[T, U, V](
     cls: Type[ConfigField[T, U]], mapping: Callable[[U], V]
 ) -> Type[ConfigField[T, V]]:
+    """
+    Maps a field to apply the given function to its output
+    """
+
     class Inner(ConfigField[T, V]):
         def __init__(self, name: str) -> None:
             self.__inner = cls(name)
@@ -306,7 +399,13 @@ def MappedField[T, U, V](
     return Inner
 
 
-def ListParser[T](parser: Parser[T]) -> Type[ConfigField[list[T]]]:
+def ListField[T](parser: Parser[T]) -> Type[ConfigField[list[T]]]:
+    """
+    A field that resolves multiple instances of a field by putting them in
+    a list.
+    Defaults to an empty list
+    """
+
     class Inner(ConfigField[list[T]]):
         def parse(self, s: str) -> ParseResult[list[T]]:
             return parser_map(lambda e: [e], parser)(s)
@@ -325,6 +424,10 @@ def ListParser[T](parser: Parser[T]) -> Type[ConfigField[list[T]]]:
 
 
 def map_grouped[T](vals: list[Grouped[T]]) -> list[list[T]]:
+    """
+    Takse a list of grouped-by-integer elements, and separates them into
+    multiple lists, one per distinct integer
+    """
     res: dict[int, list[T]] = {}
     for group, elem in vals:
         if group not in res:
@@ -334,31 +437,38 @@ def map_grouped[T](vals: list[Grouped[T]]) -> list[list[T]]:
 
 
 ColoredLineField = MappedField(
-    ListParser(grouped_parser(parse_colored_line)), map_grouped
+    ListField(grouped_parser(parse_colored_line)), map_grouped
 )
 
-PatternField = ListParser(parse_str_line)
+PatternField = ListField(parse_str_line)
 
 
 def line_parser[T](
     fields: dict[str, ConfigField[T]],
 ) -> Parser[tuple[str, T] | None]:
+    """
+    Parses a line from any of the given fields, or an empty/comment line
+    Expects the name of the parser, followed by an equal sign, and then
+    the field itself, each of which may be spaced
+    """
     return parser_map_err(
         lambda e: ParseError("Expected valid field name", e.at),
         alt(
             parser_map(lambda _: None, parse_comment),
             *(
                 preceeded(
-                    seq(tag(name), multispace0, tag("="), multispace0),
-                    parser_map(
-                        (lambda name: lambda res: (name, res))(name),
-                        cut(terminated(field.parse, multispace0)),
+                    seq(spaced(tag(name)), tag("=")),
+                    spaced(
+                        parser_map(
+                            (lambda name: lambda res: (name, res))(name),
+                            cut(terminated(field.parse, multispace0)),
+                        )
                     ),
                 )
                 for name, field in fields.items()
             ),
             parser_map(
-                lambda _: None, lookahead_parser(null_parser, tag("\n"))
+                lambda _: None, lookahead_parser(multispace0, tag("\n"))
             ),
         ),
     )
@@ -367,6 +477,13 @@ def line_parser[T](
 def fields_parser(
     fields_raw: dict[str, type[ConfigField[Any]]],
 ) -> Parser[dict[str, Any]]:
+    """
+    A general parser for all the given fields
+    Initializes the config field classes with their name as argument, then
+    applies a line parser created from them repeatedly, then finally resolves
+    the multiple definitions with the field's implementation
+    Returns a dict of the name of the field to its resolved output
+    """
     fields = {key: cls(key) for key, cls in fields_raw.items()}
     parse_line = nonempty_parser(
         cut(
@@ -419,6 +536,10 @@ def fields_parser(
 
 
 class Config:
+    """
+    The config as parsed from a file
+    """
+
     width: int
     height: int
     entry: IVec2 | None
@@ -444,6 +565,10 @@ class Config:
 
     @staticmethod
     def parse(s: str) -> "Config":
+        """
+        Parses the config from a string, defaulting values as needed
+        May raise a ParserError or ConfigError
+        """
         from mazegen.maze import Pattern
 
         fields = parser_complete(
@@ -503,7 +628,7 @@ class Config:
                         CoordField, IVec2(1, 1)
                     ),
                     "TILEMAP_BOX": DefaultedStrField(
-                        ListParser(parse_colored_line),
+                        ListField(parse_colored_line),
                         [
                             '"{RED:BLACK}╔═╦╗"',
                             '"{RED:BLACK}║ ║║"',
@@ -513,7 +638,7 @@ class Config:
                     ),
                     "PROMPT_SIZE": DefaultedField(CoordField, IVec2(32, 5)),
                     "PROMPT": DefaultedStrField(
-                        ListParser(parse_colored_line),
+                        ListField(parse_colored_line),
                         [
                             '"{WHITE:BLACK}                                "',
                             '"{WHITE:BLACK} q: quit         r: regenerate  "',
@@ -533,5 +658,16 @@ class Config:
 
         if res.screensaver:
             res.visual = True
+
+        if res.entry is not None:
+            if res.entry.x >= res.width or res.entry.y >= res.height:
+                raise ConfigError(
+                    f"The given entry {res.entry} is out of bounds of the maze"
+                )
+        if res.exit is not None:
+            if res.exit.x >= res.width or res.exit.y >= res.height:
+                raise ConfigError(
+                    f"The given exit {res.exit} is out of bounds of the maze"
+                )
 
         return res

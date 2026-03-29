@@ -8,6 +8,10 @@ def make_perfect(
     maze: Maze,
     tracker: NetworkTracker,
 ) -> None:
+    """
+    Incrementally fills every wall of the maze that doesn't cause it to be
+    bisected
+    """
     empty = list(maze.walls_empty())
     random.shuffle(empty)
     for wall in empty:

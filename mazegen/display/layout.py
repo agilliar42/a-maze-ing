@@ -4,6 +4,11 @@ from mazegen.utils import IVec2
 
 
 class BInt:
+    """
+    An integer for use with layout operations, storing whether this may be
+    expanded to fit
+    """
+
     def __init__(self, val: int, has_flex: bool = False) -> None:
         self.val: int = val
         self.has_flex: bool = has_flex
@@ -13,6 +18,9 @@ class BInt:
 
     @staticmethod
     def vector_sum(elems: list["BInt"]) -> "BInt":
+        """
+        Merges the elements by summing its values and or-ing its flex-values
+        """
         res = BInt(
             sum(map(lambda e: e.val, elems)),
             any(map(lambda e: e.has_flex, elems)),
@@ -21,6 +29,10 @@ class BInt:
 
     @staticmethod
     def vector_max(elems: list["BInt"]) -> "BInt":
+        """
+        Merges the elements by doing a max of its values and or-ing its
+        flex-values
+        """
         res = BInt(
             max(map(lambda e: e.val, elems), default=0),
             any(map(lambda e: e.has_flex, elems)),
@@ -36,6 +48,10 @@ type Layout[T] = Callable[[list[tuple[BInt, T]], int], list[int]]
 def layout_priority[T](
     sizes: list[tuple[BInt, T]], available: int
 ) -> list[int]:
+    """
+    A layout that attributes its avaialble space in order into the non-flex
+    parts of sizes, then gives the remaining space to the first flex size
+    """
     res = []
     for size, _ in sizes:
         size_scaled = min(size.val, available)
@@ -49,10 +65,17 @@ def layout_priority[T](
 
 
 def rdiv(a: int, b: int) -> int:
+    """
+    A division that rounds up, and returns zero when dividing by zero
+    """
     return a // b + (a % b != 0) if a != 0 else 0
 
 
 def layout_fair[T](sizes: list[tuple[BInt, T]], available: int) -> list[int]:
+    """
+    Evenly allocates its available space to the non-flex parts, then allocates
+    the remaining space evenly between the flex parts as well
+    """
     res = [0 for _ in sizes]
     count = len(sizes)
     for idx, (size, _) in sorted(enumerate(sizes), key=lambda e: e[1][0].val):
@@ -72,6 +95,11 @@ def layout_fair[T](sizes: list[tuple[BInt, T]], available: int) -> list[int]:
 
 
 def layout_split[T](sized: Layout[T], flexed: Layout[T]) -> Layout[T]:
+    """
+    Composes two layouts by using one for the flex part, then one for the
+    non-flex part
+    """
+
     def inner(sizes: list[tuple[BInt, T]], available: int) -> list[int]:
         flexes = [(BInt(0, e[0].has_flex), e[1]) for e in sizes]
         sizes = [(BInt(e[0].val), e[1]) for e in sizes]
@@ -85,6 +113,11 @@ def layout_split[T](sized: Layout[T], flexed: Layout[T]) -> Layout[T]:
 def layout_sort_shuffled[T](
     init: Layout[T], extract: Callable[[T], int]
 ) -> Layout[T]:
+    """
+    Modifies the layout by sorting the values according to extract, applying
+    the layout, and finally shuffling the result back to the right order
+    """
+
     def inner(sizes: list[tuple[BInt, T]], available: int) -> list[int]:
         mapping = [(i, extract(assoc)) for i, (_, assoc) in enumerate(sizes)]
         mapping.sort(key=lambda e: e[1])
@@ -100,6 +133,9 @@ def layout_sort_shuffled[T](
 
 
 def layout_mapped[T, U](init: Layout[T], f: Callable[[U], T]) -> Layout[U]:
+    """
+    Maps a layout by calling f to its inputs first
+    """
     return lambda sizes, available: init(
         list(map(lambda e: (e[0], f(e[1])), sizes)), available
     )
@@ -110,6 +146,13 @@ def layout_sort_chunked[T](
     chunk_layout: Layout[list[tuple[BInt, T]]],
     extract: Callable[[T], int],
 ) -> Layout[T]:
+    """
+    Composes the layouts by first extracting chunks, grouped by identical
+    results of extract, merging the chunk sizes, applying the chunk layout to
+    those merged sizes, sub-applying the layout to each chunk, and finally
+    shuffling back to the original order
+    """
+
     def layout_chunk_seq(
         sizes: list[tuple[BInt, T]], available: int
     ) -> list[int]:
@@ -157,13 +200,28 @@ def layout_sort_chunked[T](
 
 
 class Box(ABC):
+    """
+    A layout box ABC, the fundamental building block of layouts
+    """
+
     @abstractmethod
-    def dims(self) -> BVec2: ...
+    def dims(self) -> BVec2:
+        """
+        Returns the dimensions of this box
+        """
+
     @abstractmethod
-    def laid_out(self, at: IVec2, into: IVec2) -> None: ...
+    def laid_out(self, at: IVec2, into: IVec2) -> None:
+        """
+        Lays out this box into the given dimensions
+        """
 
 
 class VBox[T](Box):
+    """
+    A container box that stacks its elements vertically
+    """
+
     def __init__(
         self, layout: Layout[T], boxes: list[tuple[Box, T]] = []
     ) -> None:
@@ -172,6 +230,9 @@ class VBox[T](Box):
 
     @staticmethod
     def noassoc(layout: Layout[None], boxes: list[Box]) -> "VBox[None]":
+        """
+        Initializes a VBox with no associated data for its sub-boxes
+        """
         return VBox(layout, [(box, None) for box in boxes])
 
     def dims(self) -> BVec2:
@@ -198,6 +259,10 @@ class VBox[T](Box):
 
 
 class HBox[T](Box):
+    """
+    A container box that stacks its elements horizontally
+    """
+
     def __init__(
         self, layout: Layout[T], boxes: list[tuple[Box, T]] = []
     ) -> None:
@@ -206,6 +271,9 @@ class HBox[T](Box):
 
     @staticmethod
     def noassoc(layout: Layout[None], boxes: list[Box]) -> "HBox[None]":
+        """
+        Initializes an HBox with no associated data for its sub-boxes
+        """
         return HBox(layout, [(box, None) for box in boxes])
 
     def dims(self) -> BVec2:
@@ -231,6 +299,10 @@ class HBox[T](Box):
 
 
 class FBox(Box):
+    """
+    A simple box with variable size that uses a callback when laid out
+    """
+
     def __init__(
         self, dims: BVec2, cb: Callable[[IVec2, IVec2], None]
     ) -> None:
@@ -248,6 +320,11 @@ class FBox(Box):
 
 
 class DBox(Box):
+    """
+    A container box to track dirtiness, not redrawing if its location hasn't
+    changed since it was last laid out
+    """
+
     def __init__(self, inner: Box) -> None:
         self.__inner: Box = inner
         self.__prev: tuple[IVec2, IVec2] | None = None
@@ -269,6 +346,9 @@ def vpad_box(
     min_pad: int = 0,
     cb: Callable[[IVec2, IVec2], None] = lambda _at, _into: None,
 ) -> FBox:
+    """
+    Returns a simple box that gives zero-width vertical padding
+    """
     return FBox(IVec2(BInt(0), BInt(min_pad, True)), cb)
 
 
@@ -276,14 +356,23 @@ def hpad_box(
     min_pad: int = 0,
     cb: Callable[[IVec2, IVec2], None] = lambda _at, _into: None,
 ) -> FBox:
+    """
+    Returns a simple box that gives zero-height horizontal padding
+    """
     return FBox(IVec2(BInt(min_pad, True), BInt(0)), cb)
 
 
 def print_cb(at: IVec2, into: IVec2) -> None:
+    """
+    A simple callback that prints its layout location for use in debugging
+    """
     print(f"at {at.x, at.y}, into {into.x, into.y}")
 
 
-def example() -> None:
+def test_print_layout() -> None:
+    """
+    A simple example that prints layouts with basic layout usage
+    """
     a = FBox(IVec2(BInt(8, False), BInt(4, False)), print_cb)
     c = HBox.noassoc(
         layout_fair,

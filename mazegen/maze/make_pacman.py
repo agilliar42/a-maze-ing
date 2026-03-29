@@ -11,6 +11,9 @@ def make_pacman(
     pacman_tracker: PacmanTracker,
     iterations: int = 10,
 ) -> None:
+    """
+    Heuristically attempts the minimize the amount of impasses in the maze
+    """
     for _ in range(0, iterations):
         walls = pacman_tracker.clear()
         n = 0
@@ -21,7 +24,7 @@ def make_pacman(
             if not maze.get_wall(wall) or wall in walls_const:
                 continue
             leaf_neighbours = maze.wall_leaf_neighbours(wall)
-            if not maze.wall_cuts_cycle(wall):
+            if not maze.wall_causes_impass(wall):
                 continue
             if len(leaf_neighbours) == 0:
                 maze.set_wall(wall, False)

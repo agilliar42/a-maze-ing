@@ -3,9 +3,16 @@ from typing import Type
 
 
 class IVec2[T = int]:
+    """
+    A simlpe two dimensional vector class
+    """
+
     __slots__: tuple[str, str] = ("x", "y")
 
     def copy(self, inner_copy: Callable[[T], T] = lambda e: e) -> "IVec2[T]":
+        """
+        Makes a copy of this vector to avoid pass-by-reference semantics
+        """
         return IVec2(inner_copy(self.x), inner_copy(self.y))
 
     def __init__(self, x: T, y: T) -> None:
@@ -14,6 +21,9 @@ class IVec2[T = int]:
 
     @staticmethod
     def splat(n: T) -> "IVec2[T]":
+        """
+        Creates a vector with each element set to the given avlue
+        """
         return IVec2(n, n)
 
     def __repr__(self) -> str:
@@ -22,12 +32,19 @@ class IVec2[T = int]:
     def with_op[T2](
         self, op: Callable[[T, T], T2], other: "IVec2[T]"
     ) -> "IVec2[T2]":
+        """
+        Returns the result of op applied to each horizontal pair of elemnts
+        in the vector, returning the result as a vector
+        """
         return IVec2(
             op(self.x, other.x),
             op(self.y, other.y),
         )
 
     def innertype(self) -> Type[T]:
+        """
+        Returns the type of the inner values
+        """
         return type(self.x)
 
     def __mul__(self, other: "IVec2[T]") -> "IVec2[T]":
@@ -56,13 +73,25 @@ class IVec2[T = int]:
         return hash((self.x, self.y))
 
     def lane_min(self, other: "IVec2[T]") -> "IVec2[T]":
+        """
+        Obtains the pairwise minimum of each element
+        """
         return IVec2(min(self.x, other.x), min(self.y, other.y))  # type:ignore
 
     def lane_max(self, other: "IVec2[T]") -> "IVec2[T]":
+        """
+        Obtains the pairwise maximum of each element
+        """
         return IVec2(max(self.x, other.x), max(self.y, other.y))  # type:ignore
 
     def xy(self) -> tuple[T, T]:
+        """
+        Returns the x and y coords in a tuple
+        """
         return (self.x, self.y)
 
     def yx(self) -> tuple[T, T]:
+        """
+        Returns the y and x coords in a tuple
+        """
         return (self.y, self.x)

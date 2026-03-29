@@ -1,9 +1,14 @@
+from collections.abc import Generator
 from enum import Enum, auto
 from typing import Iterable, cast, overload
 from mazegen.utils.ivec2 import IVec2
 
 
 class Orientation(Enum):
+    """
+    A simple orientation enum
+    """
+
     HORIZONTAL = auto()
     VERTICAL = auto()
 
@@ -14,12 +19,19 @@ class Orientation(Enum):
 
 
 class Cardinal(Enum):
+    """
+    A cardinal direction
+    """
+
     NORTH = auto()
     SOUTH = auto()
     EAST = auto()
     WEST = auto()
 
     def opposite(self) -> "Cardinal":
+        """
+        Gets the cardinal direction opposite of this one
+        """
         match self:
             case Cardinal.NORTH:
                 return Cardinal.SOUTH
@@ -31,6 +43,9 @@ class Cardinal(Enum):
                 return Cardinal.EAST
 
     def left(self) -> "Cardinal":
+        """
+        Gets the cardinal direction left of this one
+        """
         match self:
             case Cardinal.NORTH:
                 return Cardinal.WEST
@@ -42,6 +57,9 @@ class Cardinal(Enum):
                 return Cardinal.SOUTH
 
     def right(self) -> "Cardinal":
+        """
+        Gets the cardinal direction right of this one
+        """
         return self.left().opposite()
 
     def __str__(self) -> str:
@@ -57,10 +75,16 @@ class Cardinal(Enum):
 
     @staticmethod
     def all() -> list["Cardinal"]:
+        """
+        Returns the list of all cardinal directions
+        """
         return [Cardinal.NORTH, Cardinal.SOUTH, Cardinal.EAST, Cardinal.WEST]
 
     @staticmethod
     def path_to_tiles(path: list["Cardinal"], src: "CellCoord") -> list[IVec2]:
+        """
+        Return the tile coords from a path and start
+        """
         res = [src.tile_coords()]
         for card in path:
             nxt = src.get_neighbour(card)
@@ -75,23 +99,23 @@ class Cardinal(Enum):
     def path_to_cells(
         path: list["Cardinal"], src: "CellCoord"
     ) -> list["CellCoord"]:
+        """
+        Return the cell coords from a path and start
+        """
         res = [src]
         for card in path:
             src = src.get_neighbour(card)
             res.append(src)
         return res
 
-    @staticmethod
-    def path_to_walls(
-        path: list["Cardinal"], src: "CellCoord"
-    ) -> list["WallCoord"]:
-        return [
-            cell.get_wall(card)
-            for cell, card in zip(Cardinal.path_to_cells(path, src), path)
-        ]
-
 
 class WallCoord:
+    """
+    Wall coordinates
+    a is the position in the list of lines/columns, and b is the position in
+    said line/column
+    """
+
     def __init__(self, orientation: Orientation, a: int, b: int) -> None:
         self.orientation: Orientation = orientation
         self.a: int = a
@@ -111,6 +135,10 @@ class WallCoord:
         return hash(self.__members())
 
     def a_neighbours(self) -> list["WallCoord"]:
+        """
+        Returns the neighbours of this wall on an arbitrary a side
+        distinct from b_neighbours
+        """
         return [
             WallCoord(self.orientation.opposite(), self.b, self.a - 1),
             WallCoord(self.orientation, self.a, self.b - 1),
@@ -118,6 +146,10 @@ class WallCoord:
         ]
 
     def b_neighbours(self) -> list["WallCoord"]:
+        """
+        Returns the neighbours of this wall on an arbitrary b side
+        distinct from a_neighbours
+        """
         return [
             WallCoord(self.orientation.opposite(), self.b + 1, self.a - 1),
             WallCoord(self.orientation, self.a, self.b + 1),
@@ -125,9 +157,15 @@ class WallCoord:
         ]
 
     def neighbours(self) -> list["WallCoord"]:
+        """
+        Returns the list of all neigbours for this wall, in arbitrary order
+        """
         return self.a_neighbours() + self.b_neighbours()
 
     def tile_coords(self) -> Iterable[IVec2]:
+        """
+        Returns the tile coords for this wall
+        """
         a: Iterable[int] = [self.a * 2]
         b: Iterable[int] = [self.b * 2, self.b * 2 + 1, self.b * 2 + 2]
         x_iter: Iterable[int] = (
@@ -139,6 +177,9 @@ class WallCoord:
         return (IVec2(x, y) for x in x_iter for y in y_iter)
 
     def neighbour_cells(self) -> tuple["CellCoord", "CellCoord"]:
+        """
+        Returns the cells that are besides this wall
+        """
         if self.orientation == Orientation.HORIZONTAL:
             return (
                 CellCoord(self.b, self.a),
@@ -152,6 +193,10 @@ class WallCoord:
     def to_split_wall(
         self,
     ) -> tuple["SplitWall", "SplitWall"]:
+        """
+        Returns the split wall of each side of this wall
+        """
+
         def find_cardinal(cell: CellCoord) -> Cardinal:
             for cardinal in Cardinal.all():
                 if cell.get_wall(cardinal) == self:
@@ -163,6 +208,10 @@ class WallCoord:
 
 
 class CellCoord(IVec2):
+    """
+    A cell coordinate, essentially an IVec2[int] with extra methods
+    """
+
     @overload
     def __init__(self, val: IVec2, /) -> None: ...
 
@@ -176,9 +225,15 @@ class CellCoord(IVec2):
             super().__init__(a.x, a.y)
 
     def walls(self) -> Iterable[WallCoord]:
+        """
+        Returns an iterable over the wall of this cell
+        """
         return map(self.get_wall, Cardinal.all())
 
     def get_wall(self, cardinal: Cardinal) -> WallCoord:
+        """
+        Returns the wall of this cell in the given direction
+        """
         match cardinal:
             case Cardinal.NORTH:
                 return WallCoord(Orientation.HORIZONTAL, self.y, self.x)
@@ -190,6 +245,9 @@ class CellCoord(IVec2):
                 return WallCoord(Orientation.VERTICAL, self.x + 1, self.y)
 
     def get_neighbour(self, cardinal: Cardinal) -> "CellCoord":
+        """
+        Returns the cell neighbour of this cell in the given direction
+        """
         return next(
             filter(
                 lambda e: e != self, self.get_wall(cardinal).neighbour_cells()
@@ -197,17 +255,20 @@ class CellCoord(IVec2):
         )
 
     def tile_coords(self) -> IVec2:
+        """
+        Returns the tile coord of this cell
+        """
         return IVec2(self.x * 2 + 1, self.y * 2 + 1)
 
-    def offset(self, by: IVec2) -> "CellCoord":
-        return CellCoord(self + by)
-
-    def all_up_to(self) -> Iterable["CellCoord"]:
+    def all_up_to(self) -> Generator["CellCoord"]:
+        """
+        Yields every cell from the origin up to self exclusive
+        """
         for x in range(0, self.x):
             for y in range(0, self.y):
                 yield CellCoord(x, y)
 
-    def neighbours_unchecked(self) -> Iterable["CellCoord"]:
+    def neighbours(self) -> Iterable["CellCoord"]:
         return map(self.get_neighbour, Cardinal.all())
 
 
@@ -215,12 +276,21 @@ type SplitWall = tuple[CellCoord, Cardinal]
 
 
 def split_wall_cw(wall: SplitWall) -> SplitWall:
+    """
+    Rotates a split wall clockwise
+    """
     return (wall[0].get_neighbour(wall[1]), wall[1].right())
 
 
 def split_wall_ccw(wall: SplitWall) -> SplitWall:
+    """
+    Rotates a split wall counter-clockwise
+    """
     return (wall[0].get_neighbour(wall[1]), wall[1].left())
 
 
 def split_wall_opposite(wall: SplitWall) -> SplitWall:
+    """
+    Gets the opposite of a split wall
+    """
     return (wall[0].get_neighbour(wall[1]), wall[1].opposite())

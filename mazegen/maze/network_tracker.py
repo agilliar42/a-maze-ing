@@ -5,7 +5,6 @@ from mazegen.utils.coords import (
 )
 from mazegen.utils import AVLTree, AVLLeaf, SplitWall, WallCoord
 from mazegen.utils.avl import BVHKey
-from mazegen.utils.quadtree import Rect
 
 
 class DualForest:
@@ -33,6 +32,10 @@ class DualForest:
         self,
         split_wall: SplitWall,
     ) -> SplitWall | None:
+        """
+        Attemps to find a full split wall starting after the given wall,
+        going counter clockwise
+        """
         split_wall = split_wall_opposite(split_wall)
         for _ in range(3):
             split_wall = split_wall_ccw(split_wall)
@@ -41,6 +44,9 @@ class DualForest:
         return None
 
     def fill_wall(self, wall: WallCoord) -> None:
+        """
+        Updates that this wall is full, and maintains the countour forest
+        """
         if self.get_wall(wall):
             return
         a_wall, b_wall = wall.to_split_wall()
@@ -123,6 +129,9 @@ class DualForest:
                     self.__trees.add(res)
 
     def empty_wall(self, wall: WallCoord) -> None:
+        """
+        Updates that this wall is empty, and maintains the countour forest
+        """
         if not self.get_wall(wall):
             return
         a_wall, b_wall = wall.to_split_wall()
@@ -150,19 +159,16 @@ class DualForest:
                 self.__trees.add(res)
 
     def get_wall(self, wall: WallCoord) -> bool:
+        """
+        Checks whether the given wall is full
+        """
         a_wall, b_wall = wall.to_split_wall()
         return a_wall in self.__revmap and b_wall in self.__revmap
 
-    def contour_bound(self, wall: SplitWall) -> Rect | None:
-        if wall not in self.__revmap:
-            return None
-        leaf = self.__revmap[wall]
-        parent = leaf.root()
-        if parent.root is None:
-            raise Exception()
-        return parent.root.key.rect
-
     def wall_bisects(self, wall: WallCoord) -> bool:
+        """
+        Returns whether this wall, if full, would split the maze in two
+        """
         a_wall, b_wall = wall.to_split_wall()
         a_split = self.find_split(a_wall)
         b_split = self.find_split(b_wall)
@@ -176,6 +182,10 @@ class DualForest:
 
 
 class NetworkTracker:
+    """
+    A tracker of wall countour networks, used to check maze connectivity
+    """
+
     def __init__(self, maze: Maze) -> None:
         self.__maze: Maze = maze
         self.__forest: DualForest = DualForest()
@@ -191,10 +201,13 @@ class NetworkTracker:
             self.__forest.empty_wall(wall)
 
     def wall_bisects(self, wall: WallCoord) -> bool:
+        """
+        Returns whether this wall, if full, would split the maze in two
+        """
         return self.__forest.wall_bisects(wall)
 
-    def contour_bound(self, wall: SplitWall) -> Rect | None:
-        return self.__forest.contour_bound(wall)
-
     def end(self) -> None:
+        """
+        Removes this tracker's observers from the maze
+        """
         self.__maze.observers.discard(self.__observer)

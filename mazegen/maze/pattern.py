@@ -4,6 +4,10 @@ from mazegen.maze import Maze
 
 
 class Pattern:
+    """
+    A pattern to be filled into the maze
+    """
+
     FT_PATTERN: list[str] = [
         "#   ###",
         "#     #",
@@ -25,9 +29,15 @@ class Pattern:
         }
 
     def offset(self, by: IVec2) -> "Pattern":
+        """
+        Offsets the pattern by a vector and returns the result
+        """
         return Pattern({CellCoord(cell + by) for cell in self.__cells})
 
     def flood_filled(self) -> "Pattern":
+        """
+        Fills the pattern to avoid enclosed spaces and returns it
+        """
         dims = self.dims()
         border = {CellCoord(-1, -1)}
         reachable = set()
@@ -38,7 +48,7 @@ class Pattern:
         def coord_propagate(coord: CellCoord) -> Iterable[CellCoord]:
             return (
                 cell
-                for cell in coord.neighbours_unchecked()
+                for cell in coord.neighbours()
                 if cell not in self.__cells
                 and cell not in reachable
                 and cell not in border
@@ -59,12 +69,21 @@ class Pattern:
         return Pattern(full - reachable)
 
     def add_cell(self, cell: CellCoord) -> None:
+        """
+        Adds a cell to the pattern
+        """
         self.__cells.add(cell)
 
     def remove_cell(self, cell: CellCoord) -> None:
+        """
+        Removes a cell from the pattern
+        """
         self.__cells.discard(cell)
 
     def dims(self) -> IVec2:
+        """
+        Computes the dims of the pattern
+        """
         dim_by: Callable[[Callable[[CellCoord], int]], int] = lambda f: (
             max(map(lambda c: f(c) + 1, self.__cells), default=0)
             - min(map(f, self.__cells), default=0)
@@ -72,6 +91,10 @@ class Pattern:
         return IVec2(dim_by(lambda e: e.x), dim_by(lambda e: e.y))
 
     def normalized(self) -> "Pattern":
+        """
+        Make it so there is at least one cell with a zero coordinate in each
+        dimension, and none negative
+        """
         min_by: Callable[[Callable[[CellCoord], int]], int] = lambda f: min(
             map(f, self.__cells), default=0
         )
@@ -79,15 +102,18 @@ class Pattern:
         return self.offset(offset)
 
     def mirrored(self) -> "Pattern":
+        """
+        Flips the pattern vertically and horizontally
+        """
         return Pattern({CellCoord(IVec2.splat(0) - e) for e in self.__cells})
 
     def centered_for(
         self, canvas: IVec2, excluding: set[CellCoord] = set()
     ) -> "Pattern":
-        # TODO: don't make a set for the whole maze at the start then
-        # remove from it, find the set of invalid spots then iterate
-        # through valid spots in order of priority and find the first
-        # that matches
+        """
+        Centers the pattern for the given canvas without enclosing any coords
+        in excluding
+        """
         normalized: Pattern = self.normalized()
         negative = normalized.flood_filled().mirrored()
         dims = normalized.dims()
@@ -115,6 +141,10 @@ class Pattern:
         return Pattern([])
 
     def fill(self, maze: "Maze") -> None:
+        """
+        Fills the pattern into the maze by filling the walls of each pattern
+        cell
+        """
         for cell in self.__cells:
             for wall in cell.walls():
                 maze.set_wall(wall, True)

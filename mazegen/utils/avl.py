@@ -15,10 +15,17 @@ class Key(ABC):
     """
 
     @abstractmethod
-    def reconcile(self, rhs: Self) -> Self: ...
+    def reconcile(self, rhs: Self) -> Self:
+        """
+        The function that is called to recompute the parent node as needed
+        """
 
 
 class NoopKey(Key):
+    """
+    An AVL key that does nothing to reconciliate
+    """
+
     instance: Self | None = None
 
     def __new__(cls) -> Self:
@@ -36,16 +43,26 @@ class NoopKey(Key):
 
 
 class BVHKey(Key):
+    """
+    An AVL key that maintains a bounding rectangle for each subtree
+    """
+
     def __init__(self, rect: Rect) -> None:
         super().__init__()
         self.rect: Rect = rect
 
     @staticmethod
     def for_cell(cell: CellCoord) -> "BVHKey":
+        """
+        Makes the BVH that corresponds to the given cell
+        """
         return BVHKey((cell, cell + IVec2.splat(1)))
 
     @staticmethod
     def for_wall(wall: SplitWall) -> "BVHKey":
+        """
+        Makes the BVH that corresponds to the given split wall
+        """
         return BVHKey.for_cell(wall[0])
 
     def reconcile(self, rhs: Key) -> "BVHKey":
@@ -67,6 +84,9 @@ class Tree[K: Key, V]:
         return f"{self.root}" if self.root is not None else "(empty)"
 
     def validate(self) -> None:
+        """
+        Checks that the AVL tree is valid and acyclic, for debugging
+        """
         if self.root is not None:
             self.root.validate()
 
@@ -76,6 +96,10 @@ class Tree[K: Key, V]:
         return iter(self.root)
 
     def append(self, key: K, value: V) -> "Leaf[K, V]":
+        """
+        Adds the given key and value at the end of the tree, returns the
+        created leaf
+        """
         if self.root is None:
             leaf = Leaf(self, key, value)
             self.root = leaf
@@ -90,6 +114,10 @@ class Tree[K: Key, V]:
         return cast(Leaf[K, V], self.root.rhs)
 
     def prepend(self, key: K, value: V) -> "Leaf[K, V]":
+        """
+        Adds the given key and value at the start of the tree, returns the
+        created leaf
+        """
         if self.root is None:
             leaf = Leaf(self, key, value)
             self.root = leaf
@@ -104,21 +132,37 @@ class Tree[K: Key, V]:
         return cast(Leaf[K, V], self.root.lhs)
 
     def height(self) -> int:
+        """
+        Returns the height of the tree
+        """
         return 0 if self.root is None else self.root.height
 
     def is_empty(self) -> bool:
+        """
+        Returns whether this tree is empty
+        """
         return self.root is None
 
     def replace(self, node: "Node[K, V]", by: "Node[K, V]") -> None:
+        """
+        Replace a node by another in this node's children, asserting it is
+        present
+        """
         if node is not self.root:
             raise Exception("Replace operation with unknown node")
         self.root = by
         by.parent = self
 
     def balance_update_propagate(self) -> None:
+        """
+        Propagate the balance update of the tree upwards if needed
+        """
         return
 
     def exchange(self, other: "Tree[K, V]") -> None:
+        """
+        Exchange the two trees' roots in-place
+        """
         a = self.root
         b = other.root
         if a is not None:
@@ -129,6 +173,9 @@ class Tree[K: Key, V]:
         self.root = b
 
     def ljoin(self, lhs: "Tree[K, V]") -> None:
+        """
+        Joins the tree to the left of self
+        """
         if self is lhs:
             raise Exception("Cannot merge tree with itself")
         if self.height() >= lhs.height():
@@ -138,6 +185,9 @@ class Tree[K: Key, V]:
             self.exchange(lhs)
 
     def rjoin(self, rhs: "Tree[K, V]") -> None:
+        """
+        Joins the tree to the right of self
+        """
         if self is rhs:
             raise Exception("Cannot merge tree with itself")
         if self.height() >= rhs.height():
@@ -147,6 +197,9 @@ class Tree[K: Key, V]:
             self.exchange(rhs)
 
     def __ljoin(self, lhs: "Tree[K, V]") -> None:
+        """
+        Joins the tree to the left of self, assuming self is taller than lhs
+        """
         if self.root is None:
             self.exchange(lhs)
         if self.root is None or lhs.root is None:
@@ -167,6 +220,9 @@ class Tree[K: Key, V]:
         parent.balance_update_propagate()
 
     def __rjoin(self, rhs: "Tree[K, V]") -> None:
+        """
+        Joins the tree to the right of self, assuming self is taller than rhs
+        """
         if self.root is None:
             self.exchange(rhs)
         if self.root is None or rhs.root is None:
@@ -188,6 +244,10 @@ class Tree[K: Key, V]:
 
 
 class Node[K: Key, V](ABC):
+    """
+    The abstract class of a node in an AVL tree
+    """
+
     __slots__: tuple[str, ...] = ("parent", "height", "key")
 
     def __init__(self, parent: "Branch[K, V] | Tree[K, V]", key: K) -> None:
@@ -199,6 +259,9 @@ class Node[K: Key, V](ABC):
     def __iter__(self) -> Iterator[V]: ...
 
     def validate(self) -> None:
+        """
+        Validates this node by checking it is acyclic for debugging
+        """
         visited = set()
         border: list[Node[K, V]] = [self]
         while len(border):
@@ -211,17 +274,36 @@ class Node[K: Key, V](ABC):
                 border.append(curr.rhs)
 
     def with_parent(self, parent: "Branch[K, V] | Tree[K, V]") -> "Node[K, V]":
+        """
+        Changes this node's parent and return self
+        """
         self.parent = parent
         return self
 
     def root(self) -> Tree[K, V]:
+        """
+        Get the root of the tree this node belongs to
+        """
         if isinstance(self.parent, Tree):
             return self.parent
         return self.parent.root()
 
+    def remove(self) -> None:
+        """
+        Removes this leaf from this node's parent tree
+        """
+        if isinstance(self.parent, Tree):
+            self.parent.root = None
+            return
+        other = self.parent.get_other(self)
+        self.parent.parent.replace(self.parent, other)
+        other.parent.balance_update_propagate()
+
     def split_up(self) -> tuple[Tree[K, V], Tree[K, V]]:
         """
-        makes self.parent empty
+        Makes the root of this tree empty, and returns two trees which
+        maintain the order of the previous, left and right of this node
+        respectively
         """
         curr = self
         lhs = Tree[K, V]()
@@ -243,6 +325,10 @@ class Node[K: Key, V](ABC):
 
 
 class Branch[K: Key, V](Node[K, V]):
+    """
+    A branch in an AVL tree, which necessarily has two children
+    """
+
     __slots__: tuple[str, ...] = ("lhs", "rhs")
 
     def __init__(
@@ -271,6 +357,10 @@ class Branch[K: Key, V](Node[K, V]):
         )
 
     def replace(self, node: Node[K, V], by: Node[K, V]) -> None:
+        """
+        Replace a node by another in this node's children, asserting it is
+        present
+        """
         if self.lhs is node:
             self.lhs = by
         elif self.rhs is node:
@@ -280,6 +370,9 @@ class Branch[K: Key, V](Node[K, V]):
         by.parent = self
 
     def get_other(self, node: Node[K, V]) -> Node[K, V]:
+        """
+        Returns the node that is not the given one in this branche's children
+        """
         if self.lhs is node:
             return self.rhs
         elif self.rhs is node:
@@ -288,15 +381,28 @@ class Branch[K: Key, V](Node[K, V]):
             raise Exception("Get other operation with unknown node")
 
     def update_height(self) -> None:
+        """
+        Update this branch's height from its children
+        """
         self.height = max(self.lhs.height, self.rhs.height) + 1
 
     def update_key(self) -> None:
+        """
+        Update this branche's key from its children
+        """
         self.key = self.lhs.key.reconcile(self.rhs.key)
 
     def get_balance(self) -> int:
+        """
+        Returns the AVL balance of this node
+        """
         return self.rhs.height - self.lhs.height
 
     def rotate_rr(self) -> None:
+        """
+        Rotates the subtree such that the right node of the right node is
+        lifted up
+        """
         # Simple AVL rotate:
         #
         #   n     -->     m
@@ -328,6 +434,10 @@ class Branch[K: Key, V](Node[K, V]):
         m.parent.replace(self, m)
 
     def rotate_ll(self) -> None:
+        """
+        Rotates the subtree such that the left node of the left node is
+        lifted up
+        """
         # Simple AVL rotate:
         #
         #     m   -->   n
@@ -359,6 +469,10 @@ class Branch[K: Key, V](Node[K, V]):
         n.parent.replace(self, n)
 
     def rotate_rl(self) -> None:
+        """
+        Rotates the subtree such that the left node of the right node is
+        lifted up
+        """
         # Double AVL rotate:
         #
         #   n     -->   n       -->      m
@@ -375,6 +489,10 @@ class Branch[K: Key, V](Node[K, V]):
         self.rotate_rr()
 
     def rotate_lr(self) -> None:
+        """
+        Rotates the subtree such that the right node of the left node is
+        lifted up
+        """
         # Double AVL rotate:
         #
         #     o   -->       o   -->      m
@@ -392,6 +510,9 @@ class Branch[K: Key, V](Node[K, V]):
         n = self.lhs
 
     def append(self, key: K, value: V) -> "Leaf[K, V]":
+        """
+        Append the given key and value to the end of this subtree
+        """
         if isinstance(self.rhs, Branch):
             return self.rhs.append(key, value)
         new = Branch[K, V](
@@ -405,6 +526,9 @@ class Branch[K: Key, V](Node[K, V]):
         return new_leaf
 
     def prepend(self, key: K, value: V) -> "Leaf[K, V]":
+        """
+        Prepend the given key and value to the end of this subtree
+        """
         if isinstance(self.lhs, Branch):
             return self.lhs.prepend(key, value)
         new = Branch[K, V](
@@ -418,6 +542,10 @@ class Branch[K: Key, V](Node[K, V]):
         return new_leaf
 
     def balance_one(self) -> None:
+        """
+        Balances, if necessary, the left and right hand sides of this subtree,
+        through AVL rotations
+        """
         if abs(self.get_balance()) <= 1:
             return
 
@@ -439,6 +567,9 @@ class Branch[K: Key, V](Node[K, V]):
                 self.rotate_ll()
 
     def balance_update_propagate(self) -> None:
+        """
+        Balance this subtree, then propagate up if necessary
+        """
         init_height = self.height
         init_key = self.key
         self.update_height()
@@ -449,6 +580,10 @@ class Branch[K: Key, V](Node[K, V]):
 
 
 class Leaf[K: Key, V](Node[K, V]):
+    """
+    A leaf in an AVL Tree
+    """
+
     __slots__: tuple[str, ...] = ("value",)
 
     def __init__(
@@ -465,11 +600,3 @@ class Leaf[K: Key, V](Node[K, V]):
 
     def __repr__(self) -> str:
         return f"leaf ({self.key}): {self.value}"
-
-    def remove(self) -> None:
-        if isinstance(self.parent, Tree):
-            self.parent.root = None
-            return
-        other = self.parent.get_other(self)
-        self.parent.parent.replace(self.parent, other)
-        other.parent.balance_update_propagate()

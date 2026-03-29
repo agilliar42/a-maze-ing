@@ -7,6 +7,9 @@ def make_empty(
     maze: Maze,
     walls_const: set[WallCoord],
 ) -> None:
+    """
+    Clears all the walls of the maze
+    """
     walls = [wall for wall in maze.walls_full() if wall not in walls_const]
     random.shuffle(walls)
     for wall in walls:
