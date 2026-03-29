@@ -131,14 +131,9 @@ class Tile(ITile):
             except curses.error:
                 pass  # dumb exception when writing bottom right corner
 
-        if (
-            len(pixels) > dims.y
-            or max(
-                map(lambda line: sum(map(lambda s: len(s[0]), line)), pixels)
-            )
-            > dims.x
-        ):
-            raise BackendException("Tile too big to fit in set dimensions")
+        pixels = [
+            [pixel for pixel in line[: dims.y]] for line in pixels[: dims.y]
+        ]
 
         super().__init__(curses.newpad(*dims.yx()))
 

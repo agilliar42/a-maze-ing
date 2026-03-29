@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from typing import Any
 import textwrap
+from dataclasses import dataclass
 
 from mazegen.utils.ivec2 import IVec2
 

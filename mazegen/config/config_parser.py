@@ -273,7 +273,7 @@ def DefaultedStrField[T, U](
             for s in default_strs:
                 res = parser_complete(self.parse)(s)
                 if isinstance(res, ParseError):
-                    raise ConfigException(
+                    raise Exception(
                         "Failed to construct defaulted field " + self.name()
                     )
                 acc.append(res[0])
@@ -441,9 +441,6 @@ class Config:
     prompt_size: IVec2
     prompt: list[ColoredLine]
     maze_pattern: list[str]
-
-    def __init__(self) -> None:
-        pass
 
     @staticmethod
     def parse(s: str) -> "Config":
