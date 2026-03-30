@@ -5,8 +5,8 @@ install:
 .venv:
 	python -m venv .venv
 
-venv_bash: .venv
-	bash --init-file <(echo ". ~/.bashrc; export TERM=xterm-256color; . .venv/bin/activate")
+venv-bash: .venv
+	bash --init-file <(echo ". ~/.bashrc; . .venv/bin/activate")
 
 run-prof:
 	poetry run python -m cProfile -o out.prof a_maze_ing.py
