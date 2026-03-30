@@ -1,3 +1,4 @@
+*This project has been created as part of the 42 curriculum by agilliar and luflores*
 # Description
 A-maze-ing consists of making a maze generator, with a pattern in the middle, and visualiser, which outputs to a file in a specific format.
 The project is configured through a config format whose format is specified in the [Configuration](#Configuration)
