@@ -1,5 +1,5 @@
 install:
-	pip install poetry
+	python -m pip install poetry
 	python -m poetry install
 
 .venv:
@@ -9,7 +9,7 @@ venv-bash: .venv
 	bash --init-file <(echo ". ~/.bashrc; . .venv/bin/activate")
 
 run-prof:
-	python -m poetry run python -m cProfile -o out.prof a_maze_ing.py
+	python -m poetry run python -m cProfile -o out.prof a_maze_ing.py minimal_visual.conf
 	python -m flameprof out.prof > prof.svg
 
 run:
@@ -23,7 +23,7 @@ clean:
 	rm -rf __pycache__ **/__pycache__
 
 lint:
-	python -m poetry run flake8 .
+	python -m poetry run flake8 . --extend-exclude .venv
 	python -m poetry run mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 lint-strict:
