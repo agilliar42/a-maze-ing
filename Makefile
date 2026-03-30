@@ -30,7 +30,4 @@ lint-strict:
 	python -m poetry run flake8 . --extend-exclude .venv
 	python -m poetry run mypy . --strict
 
-profile:
-	python -m cProfile -o out.prof __main__.py
-
 .PHONY: install venv  run clean lint lint-strict profile build
