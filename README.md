@@ -33,11 +33,10 @@ will enter a venv in `.venv`, opening bash
 
 ## Installing
 
-Before building or running, run
+To install the package and its dependencies, simlpy run
 ```bash
 make install
 ```
-to install dependencies.
 
 ## Building
 
