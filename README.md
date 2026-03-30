@@ -16,8 +16,8 @@ The project is configured through a config format whose format is specified in t
 ## Showcase
 
 ![Fancy error reporting!](./error_handling.png)
-![Animations, colors, and scrolling!](./animations_scrolling.mp4)
-![Flexible layout!](./flexible_layout.mp4)
+![Animations, colors, and scrolling!](./animations_scrolling.gif)
+![Flexible layout!](./flexible_layout.gif)
 
 # Instructions
 
