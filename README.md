@@ -2,6 +2,23 @@
 A-maze-ing consists of making a maze generator, with a pattern in the middle, and visualiser, which outputs to a file in a specific format.
 The project is configured through a config format whose format is specified in the [Configuration](#Configuration)
 
+# Overview
+
+## Features:
+
+- Customizeable looks for the visualizer!
+- Fancy error reporting
+- Animations, colors, and scrolling for large mazes
+- Flexible displaying, using adaptive layouts
+- 🚀 Blazingly slow 🚀 thanks to python limitations
+- No runtime dependencies
+
+## Showcase
+
+![Fancy error reporting!](./error_handling.png)
+![Animations, colors, and scrolling!](./animations_scrolling.mp4)
+![Flexible layout!](./flexible_layout.mp4)
+
 # Instructions
 
 To install or run the library, do the following:
@@ -157,4 +174,11 @@ Very little LLM assistance has been utilized, an attempt was made to use them to
 - Current build system
 - This documentation
 
+# Retrospect
 
+The project has generally been overly complex, certain approaches abandonned for the sake of time, notably shortest path pruning through subcountour bounding volume higherarchies, for which stubs can be found in the AVL implementation.
+
+Although a lot of code is present, it should be noted that said code achieves a lot of features and through that lens, the complexity is somewhat justified.
+Some things might be better refactored but the current state of the project is workable-enough for use, and spending more time on this might be excessive.
+
+Feature creep might generally be considered an issue, and we have definitely gone through our fair share, but as an approach to learning it managed to make a fairly simple project very enriching.
