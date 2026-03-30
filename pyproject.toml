@@ -6,6 +6,7 @@ name = "mazegen"
 dependencies = [
     "mypy (>=1.19.1,<2.0.0)",
     "flake8 (>=7.3.0,<8.0.0)",
+    "flameprof (>=0.4,<0.5)",
 ]
 requires-python = ">=3.13"
 version="1.0.0"
