@@ -110,6 +110,28 @@ The following fields exist:
 - MAZE\_PATTERN, [pattern](#pattern)([optional](#optional)): Each non-space character in the pattern will be a filled cell in the maze, after centering
 
 
+# Use as a module
+
+This package is suitable for use as a module, use either the complete package and api as in [a\_maze\_ing.py](./a_maze_ing.py), or utilise `mazegen.MazeGenerator` as follows:
+```python
+from mazegen import MazeGenerator
+
+gen = MazeGenerator((10, 10), (0, 0), (9, 9))
+
+# prints in the same format that gets written to file normally
+print(gen.get_output())
+```
+
+# Output format
+
+The output has been specified in the subject, but here is the short spec, in order:
+
+- The maze in hexadecimal format, one line per row of cells, each hex digit corresponds to one bit from LSb to MSb of whether the walls (North, East, South, West) are filled
+- An empty line
+- The entry Coordinate
+- The exit Coordinate
+- The shortest path from entry to exit, as a sequence of letters, (`N`, `S`, `E`, `W`) for (North, South, East, West) respectively
+
 # Algorithms
 
 The used algorithms for generation were not based on any reference algorithms
